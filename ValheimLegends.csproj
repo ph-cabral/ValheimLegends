@@ -13,8 +13,8 @@
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <NuGetTargetMoniker>.NETFramework,Version=v4.8</NuGetTargetMoniker>
-  <TargetFrameworkMoniker>.NETFramework,Version=v4.8</TargetFrameworkMoniker>
-  <RestoreProjectStyle>Unknown</RestoreProjectStyle>
+<TargetFrameworkMoniker>.NETFramework,Version=v4.8</TargetFrameworkMoniker>
+<RestoreProjectStyle>Unknown</RestoreProjectStyle>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -123,10 +123,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>libs\assembly_simplemeshcombine.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.ImageConversionModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <!-- <Reference Include="UnityEngine.ImageConversionModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>libs\UnityEngine.ImageConversionModule.dll</HintPath>
-    </Reference>
+    </Reference> -->
     <Reference Include="assembly_sunshafts, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>libs\assembly_sunshafts.dll</HintPath>

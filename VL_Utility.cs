@@ -40,20 +40,72 @@ namespace ValheimLegends
             File.WriteAllText(GetModDataPath(profile), JsonUtility.ToJson((object)data));
         }
 
+        // public static Texture2D LoadTextureFromAssets(string path)
+        // {
+        //     try
+        //     {
+        //         byte[] data = File.ReadAllBytes(Path.Combine(Folder, "VLAssets", path));
+        //         Texture2D texture2D = new Texture2D(1, 1);
+        //         texture2D.LoadImage(data);
+        //         return texture2D;
+        //     }
+        //     catch
+        //     {
+        //         byte[] data = File.ReadAllBytes(Path.Combine(Folder, path));
+        //         Texture2D texture2D = new Texture2D(1, 1);
+        //         texture2D.LoadImage(data);
+        //         return texture2D;
+        //     }
+        // }
+        // ============================================================================
+// REEMPLAZAR el metodo LoadTextureFromAssets en VL_Utility.cs (lineas ~43-59)
+// por esta version. Usa reflexion para llamar a LoadImage en runtime, asi el
+// compilador NO necesita referenciar UnityEngine.ImageConversionModule
+// (que es lo que arrastra el conflicto netstandard 2.0 vs 2.1).
+// En el juego la DLL existe y el metodo se invoca igual via reflexion.
+//
+// IMPORTANTE: despues de reemplazar esto, QUITAR del .csproj la referencia a
+//   UnityEngine.ImageConversionModule
+// y QUITAR la referencia a netstandard que agregaste.
+// Dejar System.Memory / System.Buffers / Unsafe (no molestan).
+// ============================================================================
+
+        private static System.Reflection.MethodInfo _loadImageMI;
+
+        private static bool LoadImageReflInto(Texture2D tex, byte[] data)
+        {
+            if (_loadImageMI == null)
+            {
+                // ImageConversion.LoadImage(Texture2D, byte[]) esta en
+                // UnityEngine.ImageConversionModule, cargado por el juego.
+                foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    var t = asm.GetType("UnityEngine.ImageConversion", false);
+                    if (t == null) continue;
+                    _loadImageMI = t.GetMethod("LoadImage",
+                        new System.Type[] { typeof(Texture2D), typeof(byte[]) });
+                    if (_loadImageMI != null) break;
+                }
+            }
+            if (_loadImageMI == null) return false;
+            object r = _loadImageMI.Invoke(null, new object[] { tex, data });
+            return r is bool b ? b : true;
+        }
+
         public static Texture2D LoadTextureFromAssets(string path)
         {
             try
             {
                 byte[] data = File.ReadAllBytes(Path.Combine(Folder, "VLAssets", path));
                 Texture2D texture2D = new Texture2D(1, 1);
-                texture2D.LoadImage(data);
+                LoadImageReflInto(texture2D, data);
                 return texture2D;
             }
             catch
             {
                 byte[] data = File.ReadAllBytes(Path.Combine(Folder, path));
                 Texture2D texture2D = new Texture2D(1, 1);
-                texture2D.LoadImage(data);
+                LoadImageReflInto(texture2D, data);
                 return texture2D;
             }
         }
