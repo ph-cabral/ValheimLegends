@@ -43,12 +43,12 @@ namespace ValheimLegends
             base.OnDamaged(hit, attacker);
         }
 
-        public override void ModifyRunStaminaDrain(float baseDrain, ref float drain)
-        {
-            drain *= .75f * VL_GlobalConfigs.c_rangerBonusRunCost;
-            base.ModifyRunStaminaDrain(baseDrain, ref drain);
-        }
 
+        // public override void ModifyRunStaminaDrain(ref float drain)
+        // {
+        //     drain *= .75f * VL_GlobalConfigs.c_rangerBonusRunCost;
+        //     base.ModifyRunStaminaDrain(ref drain);
+        // }
         public override void UpdateStatusEffect(float dt)
         {
             m_timer -= dt;
