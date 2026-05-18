@@ -43,6 +43,18 @@ namespace ValheimLegends
         public static ConfigEntry<float> Priest_PurgeRadius;      // área del Purge
         public static ConfigEntry<bool>  Priest_PurgeFreeze;      // aplica congelamiento
         public static ConfigEntry<float> Priest_PurgeFreezeDur;   // duración del congelamiento (seg)
+        public static ConfigEntry<float> Priest_PurgeFreezeSlow;  // multiplicador de velocidad mientras congelado (0.4 = 40%)
+        public static ConfigEntry<float> Priest_PurgeBaseCooldown;// cooldown base del Purge (seg)
+        public static ConfigEntry<float> Priest_PurgeCdIntFactor; // seg de cooldown reducido por punto de Intellect
+        public static ConfigEntry<float> Priest_PurgeCdMin;       // cooldown mínimo posible (seg)
+        public static ConfigEntry<float> Priest_PurgeRadiusIntFactor; // metros extra de radio por punto de Intellect
+
+        // ---- Priest Sanctify (ability1) ahora es heal-over-time ----
+        public static ConfigEntry<float> Priest_SanctifyHealTotal;   // curación total repartida
+        public static ConfigEntry<float> Priest_SanctifyDuration;    // duración del HoT (seg)
+        public static ConfigEntry<float> Priest_SanctifyInterval;    // tick del HoT (seg)
+        public static ConfigEntry<float> Priest_SanctifyRadius;      // radio del HoT
+        public static ConfigEntry<float> Priest_SanctifyIntFactor;   // % extra de curación por punto de Intellect
 
         // ---- Valkyrie Taunt (todas las habilidades) ----
         public static ConfigEntry<bool>  Valk_TauntEnabled;       // master switch
@@ -158,13 +170,26 @@ namespace ValheimLegends
                 Druid_RegenCleansePoison = cfg.Bind(SEC_DRU, "Regen_CleansePoison", true,
                     "Si true, al activar Regeneration quita el veneno a los aliados curados.");
 
-                Priest_HealOverTime = cfg.Bind(SEC_PRI, "Heal_OverTime", true,
-                    "Si true, el heal del Priest (ability3) cura a lo largo del tiempo en vez de instantáneo.");
+                // Heal (ability3) = curación INSTANTÁNEA de un golpe (sin canalizar, sin HoT)
+                Priest_HealOverTime = cfg.Bind(SEC_PRI, "Heal_OverTime", false,
+                    "OBSOLETO. El Heal (ability3) ahora siempre es instantáneo de un solo golpe.");
                 Priest_HealDuration = cfg.Bind(SEC_PRI, "Heal_Duration", 10f,
-                    "Duración del heal-over-time del Priest (segundos).");
+                    "OBSOLETO (Heal ya no usa HoT).");
                 Priest_HealInterval = cfg.Bind(SEC_PRI, "Heal_TickInterval", 1f,
-                    "Cada cuántos segundos cura el HoT del Priest.");
+                    "OBSOLETO (Heal ya no usa HoT).");
                 Priest_HealIntFactor = cfg.Bind(SEC_PRI, "Heal_IntellectFactor", 2f,
+                    "% extra de curación instantánea por cada punto de Intellect de EpicMMO. Ej: 2 = +2% por punto. 0 = sin escalado.");
+
+                // Sanctify (ability1) = heal-over-time
+                Priest_SanctifyHealTotal = cfg.Bind(SEC_PRI, "Sanctify_HealTotal", 60f,
+                    "Curación total que reparte Sanctify a lo largo de su duración.");
+                Priest_SanctifyDuration = cfg.Bind(SEC_PRI, "Sanctify_Duration", 12f,
+                    "Duración del heal-over-time de Sanctify (segundos).");
+                Priest_SanctifyInterval = cfg.Bind(SEC_PRI, "Sanctify_TickInterval", 1f,
+                    "Cada cuántos segundos cura el HoT de Sanctify.");
+                Priest_SanctifyRadius = cfg.Bind(SEC_PRI, "Sanctify_Radius", 20f,
+                    "Radio del heal-over-time de Sanctify.");
+                Priest_SanctifyIntFactor = cfg.Bind(SEC_PRI, "Sanctify_IntellectFactor", 2f,
                     "% extra de curación por cada punto de Intellect de EpicMMO. Ej: 2 = +2% por punto. 0 = sin escalado.");
 
                 Priest_PurgeFrostDamage = cfg.Bind(SEC_PRI, "Purge_FrostDamage", 20f,
@@ -177,6 +202,16 @@ namespace ValheimLegends
                     "Si true, el Purge congela a los enemigos golpeados.");
                 Priest_PurgeFreezeDur = cfg.Bind(SEC_PRI, "Purge_FreezeDuration", 4f,
                     "Duración del congelamiento (seg).");
+                Priest_PurgeFreezeSlow = cfg.Bind(SEC_PRI, "Purge_FreezeSlowMult", 0.3f,
+                    "Velocidad del enemigo mientras está congelado (0.3 = 30% de su velocidad; más bajo = más lento).");
+                Priest_PurgeBaseCooldown = cfg.Bind(SEC_PRI, "Purge_BaseCooldown", 15f,
+                    "Cooldown base del Purge en segundos (antes de reducir por Intellect).");
+                Priest_PurgeCdIntFactor = cfg.Bind(SEC_PRI, "Purge_CooldownIntellectFactor", 0.2f,
+                    "Segundos de cooldown reducidos por cada punto de Intellect de EpicMMO. 0 = sin escalado.");
+                Priest_PurgeCdMin = cfg.Bind(SEC_PRI, "Purge_CooldownMin", 4f,
+                    "Cooldown mínimo del Purge tras aplicar el escalado por Intellect (seg).");
+                Priest_PurgeRadiusIntFactor = cfg.Bind(SEC_PRI, "Purge_RadiusIntellectFactor", 0.15f,
+                    "Metros extra de radio del Purge por cada punto de Intellect de EpicMMO. 0 = sin escalado.");
 
                 Valk_TauntEnabled = cfg.Bind(SEC_VAL, "Taunt_Enabled", true,
                     "Activa el taunt al usar habilidades de la Valkyrie.");
@@ -275,6 +310,33 @@ namespace ValheimLegends
             if (Priest_HealIntFactor == null) return 1f;
             int intel = VL_EpicMMOBridge.GetIntellect();
             return 1f + (intel * Priest_HealIntFactor.Value / 100f);
+        }
+
+        // Multiplicador de heal del Sanctify (HoT) según Intellect de EpicMMO.
+        public static float SanctifyHealIntMult()
+        {
+            if (Priest_SanctifyIntFactor == null) return 1f;
+            int intel = VL_EpicMMOBridge.GetIntellect();
+            return 1f + (intel * Priest_SanctifyIntFactor.Value / 100f);
+        }
+
+        // Cooldown del Purge escalado por Intellect (más Int = menos cooldown).
+        public static float PurgeCooldown()
+        {
+            float baseCd = Priest_PurgeBaseCooldown != null ? Priest_PurgeBaseCooldown.Value : 15f;
+            float factor = Priest_PurgeCdIntFactor != null ? Priest_PurgeCdIntFactor.Value : 0f;
+            float min    = Priest_PurgeCdMin != null ? Priest_PurgeCdMin.Value : 4f;
+            int intel = VL_EpicMMOBridge.GetIntellect();
+            return Mathf.Max(min, baseCd - intel * factor);
+        }
+
+        // Radio del Purge escalado por Intellect (más Int = más área).
+        public static float PurgeRadius(float skillFallback)
+        {
+            float baseR = Priest_PurgeRadius != null ? Priest_PurgeRadius.Value : skillFallback;
+            float factor = Priest_PurgeRadiusIntFactor != null ? Priest_PurgeRadiusIntFactor.Value : 0f;
+            int intel = VL_EpicMMOBridge.GetIntellect();
+            return baseR + intel * factor;
         }
     }
 }

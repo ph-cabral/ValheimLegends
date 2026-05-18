@@ -1,4 +1,345 @@
-﻿using System;
+﻿// using System;
+// using System.Collections.Generic;
+// using System.Linq;
+// using System.Text;
+// using System.Threading.Tasks;
+// using BepInEx;
+// using BepInEx.Configuration;
+// using HarmonyLib;
+// using UnityEngine;
+// using System.Reflection;
+// using Unity;
+
+// namespace ValheimLegends
+// {
+//     public class Class_Priest
+//     {
+//         private static int Layermask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece_nonsolid", "terrain", "vehicle", "piece", "viewblock", "character", "character_net", "character_ghost", "Water");
+
+//         private static GameObject GO_CastFX;
+
+//         private static GameObject GO_Sanctify;        
+//         private static Projectile P_Sanctify;     
+//         private static bool healCharging = false;
+//         private static int healCount;
+//         private static int healChargeAmount;
+//         private static int healChargeAmountMax;
+
+//         private static float healSkillGain = 0f;
+
+//         public static void PurgeStatus_NearbyPlayers(Player healer, float radius, List<string> effectNames)
+//         {
+//             if(effectNames != null && effectNames.Count > 0)
+//             {
+//                 List<Character> allCharacters = new List<Character>();
+//                 allCharacters.Clear();
+//                 Character.GetCharactersInRange(healer.transform.position, radius, allCharacters);
+//                 foreach (Character p in allCharacters)
+//                 {
+//                     if (!BaseAI.IsEnemy(p, healer))
+//                     {
+//                         foreach (string effect in effectNames)
+//                         {
+//                             if (p.GetSEMan().HaveStatusEffect(effect.GetStableHashCode()))
+//                             {
+//                                 p.GetSEMan().RemoveStatusEffect(effect.GetStableHashCode());
+//                                 break;
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+
+//         public static void HealNearbyPlayers(Player healer, float radius, float amount)
+//         {
+//             // Fork: escalado por Intellect de EpicMMO (configurable, 0 = sin efecto)
+//             amount *= VL_TweakConfig.PriestHealIntMult();
+
+//             List<Character> allCharacters = new List<Character>();
+//             allCharacters.Clear();
+//             Character.GetCharactersInRange(healer.transform.position, radius, allCharacters);
+
+//             // Fork: heal-over-time configurable. Reparte 'amount' total a lo
+//             // largo de Heal_Duration en ticks de Heal_TickInterval.
+//             bool hot = VL_TweakConfig.Priest_HealOverTime != null
+//                        && VL_TweakConfig.Priest_HealOverTime.Value;
+
+//             foreach (Character p in allCharacters)
+//             {
+//                 if (!BaseAI.IsEnemy(p, healer))
+//                 {
+//                     if (!hot)
+//                     {
+//                         p.Heal(amount, true);
+//                         continue;
+//                     }
+
+//                     float dur      = VL_TweakConfig.Priest_HealDuration.Value;
+//                     float interval = VL_TweakConfig.Priest_HealInterval.Value;
+//                     if (dur <= 0f)      dur = 10f;
+//                     if (interval <= 0f) interval = 1f;
+//                     int ticks = Mathf.Max(1, Mathf.RoundToInt(dur / interval));
+
+//                     SE_Regeneration se = (SE_Regeneration)ScriptableObject.CreateInstance(typeof(SE_Regeneration));
+//                     se.externalSetup    = true;
+//                     se.m_ttl            = dur;
+//                     se.m_damageInterval = interval;
+//                     se.m_HealAmount     = amount / ticks; // total repartido
+//                     se.doOnce           = false;
+//                     se.m_tooltip        = $"Healing {se.m_HealAmount:0.#} hp every {interval:0.#}s";
+
+//                     if (p == Player.m_localPlayer)
+//                         p.GetSEMan().AddStatusEffect(se, true);
+//                     else if (p.IsPlayer())
+//                         p.GetSEMan().AddStatusEffect(se.name.GetStableHashCode(), true);
+//                     else
+//                         p.GetSEMan().AddStatusEffect(se, true);
+//                 }
+//             }
+//         }
+
+//         public static void Process_Input(Player player, ref float altitude)
+//         {
+//             System.Random rnd = new System.Random();
+//             if (VL_Utility.Ability3_Input_Down)
+//             {
+//                 if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability3_CD".GetStableHashCode()))
+//                 {
+//                     //player.Message(MessageHud.MessageType.Center, "heal - starting");
+//                     if (player.GetStamina() >= VL_Utility.GetHealCost)
+//                     {
+//                         ValheimLegends.isChanneling = true;
+
+//                         //Ability Cooldown
+//                         StatusEffect se_cd = (SE_Ability3_CD)ScriptableObject.CreateInstance(typeof(SE_Ability3_CD));
+//                         se_cd.m_ttl = VL_Utility.GetHealCooldownTime;
+//                         player.GetSEMan().AddStatusEffect(se_cd);
+
+//                         //Ability Cost
+//                         player.UseStamina(VL_Utility.GetHealCost);
+
+//                         //Skill influence
+//                         float sLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AlterationSkillDef).m_level;
+
+//                         //Effects, animations, and sounds
+//                         ValheimLegends.shouldUseGuardianPower = false;
+//                         ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("gpower");                        
+//                         UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_VL_HealPulse"), player.GetCenterPoint(), Quaternion.identity);
+
+//                         //Lingering effects
+//                         healCharging = true;
+//                         healChargeAmount = 0;
+//                         healChargeAmountMax = 60;
+//                         //Apply effects
+//                         List<string> effectList = new List<string>();
+//                         effectList.Clear();
+//                         effectList.Add("Burning");
+//                         effectList.Add("Poison");
+//                         effectList.Add("Frost");
+//                         effectList.Add("Wet");
+//                         effectList.Add("Smoked");
+//                         PurgeStatus_NearbyPlayers(player, 30f + .2f * sLevel, effectList);
+//                         HealNearbyPlayers(player, 30f + .2f * sLevel, (10f + sLevel) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestHeal);
+
+//                         //Skill gain
+//                         player.RaiseSkill(ValheimLegends.AlterationSkill, VL_Utility.GetHealSkillGain);
+//                     }
+//                     else
+//                     {
+//                         player.Message(MessageHud.MessageType.TopLeft, "Not enough stamina to begin heal : (" + player.GetStamina().ToString("#.#") + "/" + VL_Utility.GetHealCost + ")");
+//                     }
+//                 }
+//                 else
+//                 {
+//                     player.Message(MessageHud.MessageType.TopLeft, "Ability not ready");
+//                 }
+//             }
+//             else if (VL_Utility.Ability3_Input_Pressed && healCharging && player.GetStamina() > VL_Utility.GetHealCostPerUpdate && Mathf.Max(0f, altitude - player.transform.position.y) <= 1f)
+//             {
+//                 healChargeAmount++;                
+//                 player.UseStamina(VL_Utility.GetHealCostPerUpdate);
+//                 ValheimLegends.isChanneling = true;
+//                 VL_Utility.SetTimer();
+//                 if (healChargeAmount >= healChargeAmountMax)
+//                 {
+//                     healCount++;
+//                     healChargeAmount = 0;
+//                     ValheimLegends.shouldUseGuardianPower = false;
+//                     ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("gpower");
+//                     //((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(Player.m_localPlayer)).SetSpeed(1.5f);                    
+//                     UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_VL_HealPulse"), player.GetCenterPoint(), Quaternion.identity);
+//                     float sLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AlterationSkillDef).m_level;
+//                     HealNearbyPlayers(player, 20f + .2f * sLevel, ((healCount + sLevel * .3f) * 2f) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestHeal);
+
+//                     //Skill gain
+//                     player.RaiseSkill(ValheimLegends.AlterationSkill, VL_Utility.GetHealSkillGain * .5f);
+//                 }
+//             }
+//             else if((VL_Utility.Ability3_Input_Up || player.GetStamina() <= VL_Utility.GetHealCostPerUpdate || Mathf.Max(0f, altitude - player.transform.position.y) > 1f) && healCharging)
+//             {
+//                 healCount = 0;
+//                 healChargeAmount = 0;
+//                 healCharging = false;
+//                 ValheimLegends.isChanneling = false;
+//             }            
+//             else if (VL_Utility.Ability2_Input_Down)
+//             {
+//                 if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability2_CD".GetStableHashCode()))
+//                 {
+//                     if (player.GetStamina() >= VL_Utility.GetPurgeCost)
+//                     {
+//                         ValheimLegends.shouldUseGuardianPower = false;
+//                         //Skill influence
+//                         float sPurgeLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.EvocationSkillDef).m_level;
+//                         float sHealLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AlterationSkillDef).m_level;
+
+//                         //Ability Cooldown
+//                         StatusEffect se_cd = (SE_Ability2_CD)ScriptableObject.CreateInstance(typeof(SE_Ability2_CD));
+//                         se_cd.m_ttl = VL_Utility.GetPurgeCooldownTime;
+//                         player.GetSEMan().AddStatusEffect(se_cd);
+
+//                         //Ability Cost
+//                         player.UseStamina(VL_Utility.GetPurgeCost);
+
+//                         //Effects, animations, and sounds
+//                         player.StartEmote("challenge");
+//                         GO_CastFX = UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_VL_Purge"), player.GetCenterPoint(), Quaternion.identity);
+
+//                         //Lingering effects
+
+//                         //Apply effects
+//                         HealNearbyPlayers(player, 20f + (.2f * sHealLevel), .5f + UnityEngine.Random.Range(.4f, .6f) * sHealLevel * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestPurgeHeal);
+//                         List<Character> allCharacters = new List<Character>();
+//                         allCharacters.Clear();
+//                         float purgeRadius = VL_TweakConfig.Priest_PurgeRadius != null
+//                             ? VL_TweakConfig.Priest_PurgeRadius.Value : (20f + (.2f * sPurgeLevel));
+//                         Character.GetCharactersInRange(player.transform.position, purgeRadius, allCharacters);
+//                         foreach (Character ch in allCharacters)
+//                         {
+//                             if (BaseAI.IsEnemy(player, ch) && VL_Utility.LOS_IsValid(ch, player.GetCenterPoint(), player.transform.position))
+//                             {
+//                                 Vector3 direction = (ch.transform.position - player.transform.position);
+//                                 HitData hitData = new HitData();
+//                                 // Fork: Purge ahora hace daño de HIELO (configurable)
+//                                 hitData.m_damage.m_frost = (VL_TweakConfig.Priest_PurgeFrostDamage.Value
+//                                     + sPurgeLevel * VL_TweakConfig.Priest_PurgeFrostScale.Value)
+//                                     * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestPurgeDamage;
+//                                 hitData.m_pushForce = 0f;
+//                                 hitData.m_point = ch.GetEyePoint();
+//                                 hitData.m_dir = (player.transform.position - ch.transform.position);
+//                                 hitData.m_skill = ValheimLegends.EvocationSkill;
+//                                 ch.Damage(hitData);
+
+//                                 // Fork: "congelamiento" = SE_Slow de VL (freno fuerte,
+//                                 // probado y confiable). El daño m_frost además ya
+//                                 // ralentiza por mecánica vanilla.
+//                                 if (VL_TweakConfig.Priest_PurgeFreeze != null
+//                                     && VL_TweakConfig.Priest_PurgeFreeze.Value
+//                                     && ch.GetSEMan() != null)
+//                                 {
+//                                     SE_Slow freeze = (SE_Slow)ScriptableObject.CreateInstance(typeof(SE_Slow));
+//                                     freeze.m_ttl = VL_TweakConfig.Priest_PurgeFreezeDur.Value;
+//                                     ch.GetSEMan().AddStatusEffect(freeze, true);
+//                                 }
+//                             }
+//                         }
+//                         //Skill gain
+//                         player.RaiseSkill(ValheimLegends.EvocationSkill, VL_Utility.GetPurgeSkillGain * .5f);
+//                         player.RaiseSkill(ValheimLegends.AlterationSkill, VL_Utility.GetPurgeSkillGain * .5f);
+//                     }
+//                     else
+//                     {
+//                         player.Message(MessageHud.MessageType.TopLeft, "Not enough stamina to for Purge: (" + player.GetStamina().ToString("#.#") + "/" + (VL_Utility.GetPurgeCost) +")");
+//                     }
+//                 }
+//                 else
+//                 {
+//                     player.Message(MessageHud.MessageType.TopLeft, "Ability not ready");
+//                 }
+//             }
+//             else if (VL_Utility.Ability1_Input_Down)
+//             {
+//                 if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability1_CD".GetStableHashCode()))
+//                 {
+//                     //player.Message(MessageHud.MessageType.Center, "Sanctify");
+//                     if (player.GetStamina() >= VL_Utility.GetSanctifyCost)
+//                     {
+//                         //Ability Cooldown
+//                         StatusEffect se_cd = (SE_Ability1_CD)ScriptableObject.CreateInstance(typeof(SE_Ability1_CD));
+//                         se_cd.m_ttl = VL_Utility.GetSanctifyCooldownTime;
+//                         player.GetSEMan().AddStatusEffect(se_cd);
+
+//                         //Ability Cost
+//                         player.UseStamina(VL_Utility.GetSanctifyCost);
+
+//                         //Skill influence
+//                         float sLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.EvocationSkillDef).m_level;
+
+//                         //Effects, animations, and sounds
+//                         //player.StartEmote("cheer");
+//                         ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("battleaxe_attack0");
+//                         //UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_guardstone_activate"), player.transform.position, Quaternion.identity);
+
+//                         //Lingering effects
+
+//                         //Apply effects
+
+                        
+//                         RaycastHit hitInfo = default(RaycastHit);
+//                         Vector3 position = player.transform.position;
+//                         Vector3 target = (!Physics.Raycast(player.GetEyePoint(), player.GetLookDir(), out hitInfo, float.PositiveInfinity, Layermask) || !(bool)hitInfo.collider) ? (position + player.GetLookDir() * 1000f) : hitInfo.point;
+//                         Vector3 vector = target + player.transform.up * 12f;
+//                         GameObject prefab = ZNetScene.instance.GetPrefab("VL_SanctifyHammer");
+//                         GO_Sanctify = UnityEngine.Object.Instantiate(prefab, vector, Quaternion.identity);
+//                         P_Sanctify = GO_Sanctify.GetComponent<Projectile>();
+//                         P_Sanctify.name = "Sanctify";
+//                         P_Sanctify.m_respawnItemOnHit = false;
+//                         P_Sanctify.m_spawnOnHit = null;
+//                         P_Sanctify.m_ttl = 30f;
+//                         P_Sanctify.m_gravity = 9f;
+//                         P_Sanctify.m_rayRadius = 1f;
+//                         P_Sanctify.m_aoe = 8f + (.04f * sLevel);
+
+//                         GO_Sanctify.transform.localScale = Vector3.one;
+
+//                         HitData hitData = new HitData();
+//                         hitData.m_damage.m_fire = UnityEngine.Random.Range(10f + (.5f * sLevel), 20f + (.75f * sLevel)) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestSanctify;
+//                         hitData.m_damage.m_blunt = UnityEngine.Random.Range(10f + (.5f * sLevel), 20f + (.75f * sLevel)) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestSanctify;
+//                         hitData.m_damage.m_spirit = UnityEngine.Random.Range(10f + (.5f * sLevel), 20f + (.75f * sLevel)) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestSanctify;
+//                         hitData.SetAttacker(player);
+//                         hitData.m_pushForce = 50f;
+//                         hitData.m_skill = ValheimLegends.EvocationSkill;
+//                         //Vector3 a = Vector3.MoveTowards(GO_Sanctify.transform.position, target, 1f);
+//                         P_Sanctify.Setup(player, new Vector3(0f, -1f, 0f), -1f, hitData, null, null);
+                        
+//                         Traverse.Create(root: P_Sanctify).Field("m_skill").SetValue(ValheimLegends.EvocationSkill);
+//                         GO_Sanctify = null;
+
+
+//                         //Skill gain
+//                         player.RaiseSkill(ValheimLegends.EvocationSkill, VL_Utility.GetSanctifySkillGain);
+//                     }
+//                     else
+//                     {
+//                         player.Message(MessageHud.MessageType.TopLeft, "Not enough stamina for Sanctify: (" + player.GetStamina().ToString("#.#") + "/" + VL_Utility.GetSanctifyCost + ")");
+//                     }
+//                 }
+//                 else
+//                 {
+//                     player.Message(MessageHud.MessageType.TopLeft, "Ability not ready");
+//                 }
+
+//             }
+//             else
+//             {
+//                 ValheimLegends.isChanneling = false;
+//             }
+//         }
+//     }
+// }
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -51,51 +392,47 @@ namespace ValheimLegends
             }
         }
 
-        public static void HealNearbyPlayers(Player healer, float radius, float amount)
+        // Fork: Heal (ability3) = curación instantánea de un solo golpe.
+        public static void HealNearbyPlayers_Instant(Player healer, float radius, float amount)
         {
-            // Fork: escalado por Intellect de EpicMMO (configurable, 0 = sin efecto)
-            amount *= VL_TweakConfig.PriestHealIntMult();
-
             List<Character> allCharacters = new List<Character>();
-            allCharacters.Clear();
             Character.GetCharactersInRange(healer.transform.position, radius, allCharacters);
-
-            // Fork: heal-over-time configurable. Reparte 'amount' total a lo
-            // largo de Heal_Duration en ticks de Heal_TickInterval.
-            bool hot = VL_TweakConfig.Priest_HealOverTime != null
-                       && VL_TweakConfig.Priest_HealOverTime.Value;
-
             foreach (Character p in allCharacters)
             {
                 if (!BaseAI.IsEnemy(p, healer))
-                {
-                    if (!hot)
-                    {
-                        p.Heal(amount, true);
-                        continue;
-                    }
+                    p.Heal(amount, true);
+            }
+        }
 
-                    float dur      = VL_TweakConfig.Priest_HealDuration.Value;
-                    float interval = VL_TweakConfig.Priest_HealInterval.Value;
-                    if (dur <= 0f)      dur = 10f;
-                    if (interval <= 0f) interval = 1f;
-                    int ticks = Mathf.Max(1, Mathf.RoundToInt(dur / interval));
+        // Fork: Sanctify (ability1) = heal-over-time. Reparte 'totalAmount'
+        // a lo largo de 'dur' en ticks de 'interval'.
+        public static void HealNearbyPlayers_HoT(Player healer, float radius, float totalAmount,
+                                                 float dur, float interval)
+        {
+            if (dur <= 0f)      dur = 10f;
+            if (interval <= 0f) interval = 1f;
+            int ticks = Mathf.Max(1, Mathf.RoundToInt(dur / interval));
 
-                    SE_Regeneration se = (SE_Regeneration)ScriptableObject.CreateInstance(typeof(SE_Regeneration));
-                    se.externalSetup    = true;
-                    se.m_ttl            = dur;
-                    se.m_damageInterval = interval;
-                    se.m_HealAmount     = amount / ticks; // total repartido
-                    se.doOnce           = false;
-                    se.m_tooltip        = $"Healing {se.m_HealAmount:0.#} hp every {interval:0.#}s";
+            List<Character> allCharacters = new List<Character>();
+            Character.GetCharactersInRange(healer.transform.position, radius, allCharacters);
+            foreach (Character p in allCharacters)
+            {
+                if (BaseAI.IsEnemy(p, healer)) continue;
 
-                    if (p == Player.m_localPlayer)
-                        p.GetSEMan().AddStatusEffect(se, true);
-                    else if (p.IsPlayer())
-                        p.GetSEMan().AddStatusEffect(se.name.GetStableHashCode(), true);
-                    else
-                        p.GetSEMan().AddStatusEffect(se, true);
-                }
+                SE_Regeneration se = (SE_Regeneration)ScriptableObject.CreateInstance(typeof(SE_Regeneration));
+                se.externalSetup    = true;
+                se.m_ttl            = dur;
+                se.m_damageInterval = interval;
+                se.m_HealAmount     = totalAmount / ticks; // total repartido
+                se.doOnce           = false;
+                se.m_tooltip        = $"Healing {se.m_HealAmount:0.#} hp every {interval:0.#}s";
+
+                if (p == Player.m_localPlayer)
+                    p.GetSEMan().AddStatusEffect(se, true);
+                else if (p.IsPlayer())
+                    p.GetSEMan().AddStatusEffect(se.name.GetStableHashCode(), true);
+                else
+                    p.GetSEMan().AddStatusEffect(se, true);
             }
         }
 
@@ -106,11 +443,8 @@ namespace ValheimLegends
             {
                 if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability3_CD".GetStableHashCode()))
                 {
-                    //player.Message(MessageHud.MessageType.Center, "heal - starting");
                     if (player.GetStamina() >= VL_Utility.GetHealCost)
                     {
-                        ValheimLegends.isChanneling = true;
-
                         //Ability Cooldown
                         StatusEffect se_cd = (SE_Ability3_CD)ScriptableObject.CreateInstance(typeof(SE_Ability3_CD));
                         se_cd.m_ttl = VL_Utility.GetHealCooldownTime;
@@ -124,30 +458,29 @@ namespace ValheimLegends
 
                         //Effects, animations, and sounds
                         ValheimLegends.shouldUseGuardianPower = false;
-                        ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("gpower");                        
+                        ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("gpower");
                         UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_VL_HealPulse"), player.GetCenterPoint(), Quaternion.identity);
 
-                        //Lingering effects
-                        healCharging = true;
-                        healChargeAmount = 0;
-                        healChargeAmountMax = 60;
-                        //Apply effects
+                        // Fork: limpieza de estados negativos + curación INSTANTÁNEA de un solo golpe.
                         List<string> effectList = new List<string>();
-                        effectList.Clear();
                         effectList.Add("Burning");
                         effectList.Add("Poison");
                         effectList.Add("Frost");
                         effectList.Add("Wet");
                         effectList.Add("Smoked");
                         PurgeStatus_NearbyPlayers(player, 30f + .2f * sLevel, effectList);
-                        HealNearbyPlayers(player, 30f + .2f * sLevel, (10f + sLevel) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestHeal);
+
+                        float healAmount = (10f + sLevel) * VL_GlobalConfigs.g_DamageModifer
+                                           * VL_GlobalConfigs.c_priestHeal
+                                           * VL_TweakConfig.PriestHealIntMult();
+                        HealNearbyPlayers_Instant(player, 30f + .2f * sLevel, healAmount);
 
                         //Skill gain
                         player.RaiseSkill(ValheimLegends.AlterationSkill, VL_Utility.GetHealSkillGain);
                     }
                     else
                     {
-                        player.Message(MessageHud.MessageType.TopLeft, "Not enough stamina to begin heal : (" + player.GetStamina().ToString("#.#") + "/" + VL_Utility.GetHealCost + ")");
+                        player.Message(MessageHud.MessageType.TopLeft, "Not enough stamina to heal : (" + player.GetStamina().ToString("#.#") + "/" + VL_Utility.GetHealCost + ")");
                     }
                 }
                 else
@@ -155,34 +488,6 @@ namespace ValheimLegends
                     player.Message(MessageHud.MessageType.TopLeft, "Ability not ready");
                 }
             }
-            else if (VL_Utility.Ability3_Input_Pressed && healCharging && player.GetStamina() > VL_Utility.GetHealCostPerUpdate && Mathf.Max(0f, altitude - player.transform.position.y) <= 1f)
-            {
-                healChargeAmount++;                
-                player.UseStamina(VL_Utility.GetHealCostPerUpdate);
-                ValheimLegends.isChanneling = true;
-                VL_Utility.SetTimer();
-                if (healChargeAmount >= healChargeAmountMax)
-                {
-                    healCount++;
-                    healChargeAmount = 0;
-                    ValheimLegends.shouldUseGuardianPower = false;
-                    ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("gpower");
-                    //((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(Player.m_localPlayer)).SetSpeed(1.5f);                    
-                    UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_VL_HealPulse"), player.GetCenterPoint(), Quaternion.identity);
-                    float sLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AlterationSkillDef).m_level;
-                    HealNearbyPlayers(player, 20f + .2f * sLevel, ((healCount + sLevel * .3f) * 2f) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestHeal);
-
-                    //Skill gain
-                    player.RaiseSkill(ValheimLegends.AlterationSkill, VL_Utility.GetHealSkillGain * .5f);
-                }
-            }
-            else if((VL_Utility.Ability3_Input_Up || player.GetStamina() <= VL_Utility.GetHealCostPerUpdate || Mathf.Max(0f, altitude - player.transform.position.y) > 1f) && healCharging)
-            {
-                healCount = 0;
-                healChargeAmount = 0;
-                healCharging = false;
-                ValheimLegends.isChanneling = false;
-            }            
             else if (VL_Utility.Ability2_Input_Down)
             {
                 if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability2_CD".GetStableHashCode()))
@@ -196,7 +501,8 @@ namespace ValheimLegends
 
                         //Ability Cooldown
                         StatusEffect se_cd = (SE_Ability2_CD)ScriptableObject.CreateInstance(typeof(SE_Ability2_CD));
-                        se_cd.m_ttl = VL_Utility.GetPurgeCooldownTime;
+                        // Fork: cooldown del Purge escala con Intellect (más Int = menos CD)
+                        se_cd.m_ttl = VL_TweakConfig.PurgeCooldown();
                         player.GetSEMan().AddStatusEffect(se_cd);
 
                         //Ability Cost
@@ -209,11 +515,11 @@ namespace ValheimLegends
                         //Lingering effects
 
                         //Apply effects
-                        HealNearbyPlayers(player, 20f + (.2f * sHealLevel), .5f + UnityEngine.Random.Range(.4f, .6f) * sHealLevel * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestPurgeHeal);
+                        HealNearbyPlayers_Instant(player, 20f + (.2f * sHealLevel), .5f + UnityEngine.Random.Range(.4f, .6f) * sHealLevel * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestPurgeHeal);
                         List<Character> allCharacters = new List<Character>();
                         allCharacters.Clear();
-                        float purgeRadius = VL_TweakConfig.Priest_PurgeRadius != null
-                            ? VL_TweakConfig.Priest_PurgeRadius.Value : (20f + (.2f * sPurgeLevel));
+                        // Fork: radio del Purge escala con Intellect (más Int = más área)
+                        float purgeRadius = VL_TweakConfig.PurgeRadius(20f + (.2f * sPurgeLevel));
                         Character.GetCharactersInRange(player.transform.position, purgeRadius, allCharacters);
                         foreach (Character ch in allCharacters)
                         {
@@ -240,6 +546,10 @@ namespace ValheimLegends
                                 {
                                     SE_Slow freeze = (SE_Slow)ScriptableObject.CreateInstance(typeof(SE_Slow));
                                     freeze.m_ttl = VL_TweakConfig.Priest_PurgeFreezeDur.Value;
+                                    // Fork: intensidad del freno configurable (más bajo = más lento/congelado)
+                                    if (VL_TweakConfig.Priest_PurgeFreezeSlow != null)
+                                        freeze.speedAmount = VL_TweakConfig.Priest_PurgeFreezeSlow.Value;
+                                    freeze.speedDuration = VL_TweakConfig.Priest_PurgeFreezeDur.Value;
                                     ch.GetSEMan().AddStatusEffect(freeze, true);
                                 }
                             }
@@ -274,51 +584,28 @@ namespace ValheimLegends
                         player.UseStamina(VL_Utility.GetSanctifyCost);
 
                         //Skill influence
-                        float sLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.EvocationSkillDef).m_level;
+                        float sLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AlterationSkillDef).m_level;
 
                         //Effects, animations, and sounds
-                        //player.StartEmote("cheer");
                         ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("battleaxe_attack0");
-                        //UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_guardstone_activate"), player.transform.position, Quaternion.identity);
+                        UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_VL_HealPulse"), player.GetCenterPoint(), Quaternion.identity);
 
-                        //Lingering effects
+                        // Fork: Sanctify ahora es un HEAL-OVER-TIME (separado del Heal instantáneo).
+                        float sancTotal = (VL_TweakConfig.Priest_SanctifyHealTotal != null
+                                              ? VL_TweakConfig.Priest_SanctifyHealTotal.Value : 60f)
+                                          + sLevel;
+                        sancTotal *= VL_GlobalConfigs.g_DamageModifer
+                                     * VL_GlobalConfigs.c_priestSanctify
+                                     * VL_TweakConfig.SanctifyHealIntMult();
 
-                        //Apply effects
+                        float sancDur    = VL_TweakConfig.Priest_SanctifyDuration != null ? VL_TweakConfig.Priest_SanctifyDuration.Value : 12f;
+                        float sancInt    = VL_TweakConfig.Priest_SanctifyInterval != null ? VL_TweakConfig.Priest_SanctifyInterval.Value : 1f;
+                        float sancRadius = (VL_TweakConfig.Priest_SanctifyRadius != null ? VL_TweakConfig.Priest_SanctifyRadius.Value : 20f) + (.2f * sLevel);
 
-                        
-                        RaycastHit hitInfo = default(RaycastHit);
-                        Vector3 position = player.transform.position;
-                        Vector3 target = (!Physics.Raycast(player.GetEyePoint(), player.GetLookDir(), out hitInfo, float.PositiveInfinity, Layermask) || !(bool)hitInfo.collider) ? (position + player.GetLookDir() * 1000f) : hitInfo.point;
-                        Vector3 vector = target + player.transform.up * 12f;
-                        GameObject prefab = ZNetScene.instance.GetPrefab("VL_SanctifyHammer");
-                        GO_Sanctify = UnityEngine.Object.Instantiate(prefab, vector, Quaternion.identity);
-                        P_Sanctify = GO_Sanctify.GetComponent<Projectile>();
-                        P_Sanctify.name = "Sanctify";
-                        P_Sanctify.m_respawnItemOnHit = false;
-                        P_Sanctify.m_spawnOnHit = null;
-                        P_Sanctify.m_ttl = 30f;
-                        P_Sanctify.m_gravity = 9f;
-                        P_Sanctify.m_rayRadius = 1f;
-                        P_Sanctify.m_aoe = 8f + (.04f * sLevel);
-
-                        GO_Sanctify.transform.localScale = Vector3.one;
-
-                        HitData hitData = new HitData();
-                        hitData.m_damage.m_fire = UnityEngine.Random.Range(10f + (.5f * sLevel), 20f + (.75f * sLevel)) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestSanctify;
-                        hitData.m_damage.m_blunt = UnityEngine.Random.Range(10f + (.5f * sLevel), 20f + (.75f * sLevel)) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestSanctify;
-                        hitData.m_damage.m_spirit = UnityEngine.Random.Range(10f + (.5f * sLevel), 20f + (.75f * sLevel)) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestSanctify;
-                        hitData.SetAttacker(player);
-                        hitData.m_pushForce = 50f;
-                        hitData.m_skill = ValheimLegends.EvocationSkill;
-                        //Vector3 a = Vector3.MoveTowards(GO_Sanctify.transform.position, target, 1f);
-                        P_Sanctify.Setup(player, new Vector3(0f, -1f, 0f), -1f, hitData, null, null);
-                        
-                        Traverse.Create(root: P_Sanctify).Field("m_skill").SetValue(ValheimLegends.EvocationSkill);
-                        GO_Sanctify = null;
-
+                        HealNearbyPlayers_HoT(player, sancRadius, sancTotal, sancDur, sancInt);
 
                         //Skill gain
-                        player.RaiseSkill(ValheimLegends.EvocationSkill, VL_Utility.GetSanctifySkillGain);
+                        player.RaiseSkill(ValheimLegends.AlterationSkill, VL_Utility.GetSanctifySkillGain);
                     }
                     else
                     {
