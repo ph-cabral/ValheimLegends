@@ -76,6 +76,11 @@ namespace ValheimLegends
         {
             base.UpdateStatusEffect(dt);
 
+            // El sprite estático se asigna después del ctor; refrescarlo aquí
+            // para que el icono del buff aparezca de verdad.
+            if (m_icon == null && AbilityIcon != null)
+                m_icon = AbilityIcon;
+
             // Mostrar la cantidad de cargas de Mortal Will en el icono del buff
             // (mismo patrón que SE_Valkyrie: m_ttl = contador, m_time = 0).
             m_ttl = mortalWillCount;

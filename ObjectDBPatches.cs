@@ -157,6 +157,7 @@ namespace ValheimLegends
                 SE_Monk.AbilityIcon = ValheimLegends.MonkIcon;
                 SE_Ranger.AbilityIcon = ValheimLegends.RangerIcon;
                 SE_Valkyrie.AbilityIcon = ValheimLegends.ValkyrieIcon;
+                SE_Pantheon.AbilityIcon = ZNetScene.instance.GetPrefab("TrophyGoblinKing").GetComponent<ItemDrop>().m_itemData.GetIcon();
                 SE_Weaken.AbilityIcon = ValheimLegends.WeakenIcon;
 
                 SE_BiomeMeadows.AbilityIcon = ValheimLegends.BiomeMeadowsIcon;

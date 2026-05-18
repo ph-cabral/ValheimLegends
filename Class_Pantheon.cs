@@ -104,10 +104,10 @@ namespace ValheimLegends
                     bool emp = SE_Pantheon.ConsumeEmpowered();
                     float mult = emp ? VL_TweakConfig.Pan_MortalWillMult.Value : 1f;
 
-                    // Animación de estocada con lanza
+                    // Animación de estocada larga con espada
                     ((ZSyncAnimation)typeof(Player).GetField("m_zanim",
                         BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player))
-                        .SetTrigger("spear_poke");
+                        .SetTrigger("swordstaff_attack");
 
                     // Empuje físico hacia adelante (embestida)
                     Rigidbody body = Traverse.Create(player).Field("m_body").GetValue<Rigidbody>();
@@ -137,15 +137,16 @@ namespace ValheimLegends
 
                     List<Character> chars = new List<Character>();
                     Character.GetCharactersInRange(player.transform.position,
-                        VL_TweakConfig.Pan_Q_ChargeRadius.Value, chars);
+                        VL_TweakConfig.Pan_Q_StabRange.Value, chars);
                     Vector3 fwd = player.transform.forward;
+                    float halfAng = VL_TweakConfig.Pan_Q_StabAngle.Value * 0.5f;
                     foreach (Character ch in chars)
                     {
                         if (ch == null || ch == player) continue;
                         if (!BaseAI.IsEnemy(player, ch)) continue;
                         Vector3 d = ch.transform.position - player.transform.position;
                         d.y = 0f;
-                        if (Vector3.Angle(fwd, d) > 60f) continue;
+                        if (Vector3.Angle(fwd, d) > halfAng) continue;
 
                         HitData hd = new HitData();
                         hd.m_damage.m_pierce = dmg;

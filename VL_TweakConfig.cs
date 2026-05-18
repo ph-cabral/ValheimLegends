@@ -78,6 +78,8 @@ namespace ValheimLegends
         public static ConfigEntry<float> Pan_Q_ChargeForce;       // fuerza horizontal de la embestida (Q)
         public static ConfigEntry<float> Pan_Q_ChargeUp;          // componente vertical de la embestida
         public static ConfigEntry<float> Pan_Q_ChargeRadius;      // alcance del golpe de la embestida
+        public static ConfigEntry<float> Pan_Q_StabRange;         // rango de la estocada larga (Q espada) - lo determina el usuario
+        public static ConfigEntry<float> Pan_Q_StabAngle;         // ángulo del cono de la estocada (grados)
         public static ConfigEntry<float> Pan_Block_SpearDamage;   // daño pierce de la lanza (bloqueo+Q)
         public static ConfigEntry<float> Pan_Block_SpearStamina;  // stamina lanza (bloqueo+Q)
 
@@ -244,6 +246,10 @@ namespace ValheimLegends
                     "Componente vertical de la embestida.");
                 Pan_Q_ChargeRadius = cfg.Bind(SEC_PAN, "Q_ChargeRadius", 3.5f,
                     "Alcance del golpe frontal de la embestida.");
+                Pan_Q_StabRange = cfg.Bind(SEC_PAN, "Q_StabRange", 4f,
+                    "Rango de la estocada larga de la Q (espada). Lo determina el usuario.");
+                Pan_Q_StabAngle = cfg.Bind(SEC_PAN, "Q_StabAngle", 45f,
+                    "Ángulo del cono frontal de la estocada larga (grados).");
                 Pan_Block_SpearDamage = cfg.Bind(SEC_PAN, "Block_SpearDamage", 45f,
                     "Daño pierce de la lanza arrojadiza (bloqueo + Q).");
                 Pan_Block_SpearStamina = cfg.Bind(SEC_PAN, "Block_SpearStamina", 12f,

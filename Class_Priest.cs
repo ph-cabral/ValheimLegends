@@ -488,9 +488,9 @@ namespace ValheimLegends
                     player.Message(MessageHud.MessageType.TopLeft, "Ability not ready");
                 }
             }
-            else if (VL_Utility.Ability2_Input_Down)
+            else if (VL_Utility.Ability1_Input_Down)
             {
-                if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability2_CD".GetStableHashCode()))
+                if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability1_CD".GetStableHashCode()))
                 {
                     if (player.GetStamina() >= VL_Utility.GetPurgeCost)
                     {
@@ -500,7 +500,7 @@ namespace ValheimLegends
                         float sHealLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AlterationSkillDef).m_level;
 
                         //Ability Cooldown
-                        StatusEffect se_cd = (SE_Ability2_CD)ScriptableObject.CreateInstance(typeof(SE_Ability2_CD));
+                        StatusEffect se_cd = (SE_Ability1_CD)ScriptableObject.CreateInstance(typeof(SE_Ability1_CD));
                         // Fork: cooldown del Purge escala con Intellect (más Int = menos CD)
                         se_cd.m_ttl = VL_TweakConfig.PurgeCooldown();
                         player.GetSEMan().AddStatusEffect(se_cd);
@@ -568,15 +568,15 @@ namespace ValheimLegends
                     player.Message(MessageHud.MessageType.TopLeft, "Ability not ready");
                 }
             }
-            else if (VL_Utility.Ability1_Input_Down)
+            else if (VL_Utility.Ability2_Input_Down)
             {
-                if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability1_CD".GetStableHashCode()))
+                if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability2_CD".GetStableHashCode()))
                 {
                     //player.Message(MessageHud.MessageType.Center, "Sanctify");
                     if (player.GetStamina() >= VL_Utility.GetSanctifyCost)
                     {
                         //Ability Cooldown
-                        StatusEffect se_cd = (SE_Ability1_CD)ScriptableObject.CreateInstance(typeof(SE_Ability1_CD));
+                        StatusEffect se_cd = (SE_Ability2_CD)ScriptableObject.CreateInstance(typeof(SE_Ability2_CD));
                         se_cd.m_ttl = VL_Utility.GetSanctifyCooldownTime;
                         player.GetSEMan().AddStatusEffect(se_cd);
 
