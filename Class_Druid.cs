@@ -341,6 +341,14 @@ namespace ValheimLegends
                         {
                             if(!BaseAI.IsEnemy(player, p))
                             {
+                                // Fork: quita veneno al curar (configurable)
+                                if (VL_TweakConfig.Druid_RegenCleansePoison != null
+                                    && VL_TweakConfig.Druid_RegenCleansePoison.Value
+                                    && p.GetSEMan().HaveStatusEffect("Poison".GetStableHashCode()))
+                                {
+                                    p.GetSEMan().RemoveStatusEffect("Poison".GetStableHashCode());
+                                }
+
                                 if (p == Player.m_localPlayer)
                                 {
                                     p.GetSEMan().AddStatusEffect(se_regen, true);

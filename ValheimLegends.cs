@@ -202,7 +202,8 @@ namespace ValheimLegends
             Enchanter = 10,
             Rogue = 11,
             Shaman = 16,
-            Valkyrie = 32
+            Valkyrie = 32,
+            Pantheon = 64
         }
 
         public static int GetPlayerClassNum
@@ -962,7 +963,7 @@ namespace ValheimLegends
             {
                 if (__instance == Player.m_localPlayer)
                 {
-                    if (Class_Valkyrie.inFlight)
+                    if (Class_Valkyrie.inFlight || Class_Pantheon.inFlight)
                     {
                         if (Mathf.Max(0f, ___m_maxAirAltitude - __instance.transform.position.y) > 1f)
                         {
@@ -990,6 +991,11 @@ namespace ValheimLegends
                     if(vl_player.vl_class == PlayerClass.Monk)
                     {
                         Class_Monk.Impact_Effect(Player.m_localPlayer, maxAltitude);
+                    }
+                    if (vl_player.vl_class == PlayerClass.Pantheon)
+                    {
+                        Class_Pantheon.Impact_Effect(Player.m_localPlayer, maxAltitude);
+                        Class_Pantheon.inFlight = false;
                     }
                 }
             }
@@ -1088,11 +1094,30 @@ namespace ValheimLegends
             public static bool Prefix(Character __instance, ref HitData hit, float ___m_maxAirAltitude)
             {
                 Character attacker = hit.GetAttacker();
+                // Pantheon Mortal Will: cada golpe que conecta el jugador suma 1 carga
+                if (attacker == Player.m_localPlayer && __instance != Player.m_localPlayer
+                    && vl_player != null && vl_player.vl_class == PlayerClass.Pantheon
+                    && hit.GetTotalDamage() > 0f)
+                {
+                    SE_Pantheon.AddMortalWill();
+                }
                 if (__instance == Player.m_localPlayer)
                 {
                     if (Class_Valkyrie.inFlight)// && Mathf.Max(0f, ___m_maxAirAltitude - __instance.transform.position.y) > 4f)
                     {
                         Class_Valkyrie.inFlight = false;                        
+                        return false;
+                    }
+                    // Pantheon en salto: anular el daño de caída (no apagamos
+                    // inFlight acá; lo hace Impact_Effect al aterrizar para no
+                    // perder el golpe en área).
+                    if (Class_Pantheon.inFlight || Time.time < Class_Pantheon.fallImmuneUntil)
+                    {
+                        return false;
+                    }
+                    // Pantheon Aegis activo: daño que viene de frente = 0
+                    if (Class_Pantheon.ShouldNullifyFrontDamage(Player.m_localPlayer, hit))
+                    {
                         return false;
                     }
                     //if(__instance.GetSEMan().HaveStatusEffect("SE_VL_Bulwark".GetStableHashCode()))
@@ -1939,6 +1964,12 @@ namespace ValheimLegends
                         vl_player.vl_class = PlayerClass.Druid;
                         flag = true;
                     }
+                    else if (VL_TweakConfig.Pan_Item != null && VL_TweakConfig.Pan_Item.Value != "" && item.m_shared.m_name.Contains(VL_TweakConfig.Pan_Item.Value) && vl_player.vl_class != PlayerClass.Pantheon)
+                    {
+                        user.Message(MessageHud.MessageType.Center, "Acquired the powers of Pantheon");
+                        vl_player.vl_class = PlayerClass.Pantheon;
+                        flag = true;
+                    }
                     else if (item.m_shared.m_name.Contains(VL_GlobalConfigs.ItemStrings["vl_svr_berserkerItem"]) && VL_GlobalConfigs.ItemStrings["vl_svr_berserkerItem"] != "" && vl_player.vl_class != PlayerClass.Berserker)
                     {
                         user.Message(MessageHud.MessageType.Center, "Acquired the powers of a Berserker");
@@ -2167,6 +2198,16 @@ namespace ValheimLegends
                                             SE_Rogue se_r = (SE_Rogue)ScriptableObject.CreateInstance(typeof(SE_Rogue));
                                             se_r.m_ttl = SE_Rogue.m_baseTTL;
                                             localPlayer.GetSEMan().AddStatusEffect(se_r, true);
+                                        }
+                                        break;
+                                    case PlayerClass.Pantheon:
+                                        Class_Pantheon.Process_Input(localPlayer);
+
+                                        if ((!localPlayer.GetSEMan().HaveStatusEffect("SE_VL_Pantheon".GetStableHashCode())))
+                                        {
+                                            SE_Pantheon se_p = (SE_Pantheon)ScriptableObject.CreateInstance(typeof(SE_Pantheon));
+                                            se_p.m_ttl = SE_Pantheon.m_baseTTL;
+                                            localPlayer.GetSEMan().AddStatusEffect(se_p, true);
                                         }
                                         break;
                                     default:
@@ -2466,6 +2507,9 @@ namespace ValheimLegends
             vl_svr_valkyrieBonusIceLance = this.Config.Bind<float>("Class Modifiers", "vl_svr_valkyrieBonusIceLance", 100f, "Modifies the damage from Ice Lance");
             vl_svr_valkyrieChargeDuration = this.Config.Bind<float>("Class Modifiers", "vl_svr_valkyrieChargeDuration", 100f, "Modifies how quickly ice charges decrease");
             vl_svr_valkyrieItem = this.Config.Bind<string>("Class Modifiers", "vl_svr_valkyrieItem", "item_flint", "Sacrifice this item at Eikthyr's altar to become a valkyrie");
+
+            // Fork: config propia de tweaks (cooldowns por-hab + Druid/Priest HoT)
+            VL_TweakConfig.Init(this.Config);
 
             VL_GlobalConfigs.ConfigStrings = new Dictionary<string, float>();
             VL_GlobalConfigs.ConfigStrings.Clear();
@@ -3193,6 +3237,13 @@ namespace ValheimLegends
                 Ability2_Name = "Charm";
                 Ability3_Name = "Z. Charge";
                 Player.m_localPlayer.ShowTutorial("VL_Enchanter");
+            }
+            else if (vl_player.vl_class == PlayerClass.Pantheon)
+            {
+                ZLog.Log("Valheim Legend: Pantheon");
+                Ability1_Name = "Spear";
+                Ability2_Name = "Aegis";
+                Ability3_Name = "Leap";
             }
             else
             {

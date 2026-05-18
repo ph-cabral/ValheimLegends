@@ -1,0 +1,9 @@
+﻿{
+  "name": "Valheim_Legends",
+  "description": "Adds selectable hero classes to the game, each with unique abilities and skills. The original author is TorannD. Visteus updated the mod until late 2024. I made minimal changes to get the mod working with the Call to Arms update in September 2025.",
+  "version_number": "0.7.6",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ],
+  "website_url": "https://github.com/giafosu/ValheimLegends"
+}

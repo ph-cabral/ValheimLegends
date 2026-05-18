@@ -53,14 +53,48 @@ namespace ValheimLegends
 
         public static void HealNearbyPlayers(Player healer, float radius, float amount)
         {
+            // Fork: escalado por Intellect de EpicMMO (configurable, 0 = sin efecto)
+            amount *= VL_TweakConfig.PriestHealIntMult();
+
             List<Character> allCharacters = new List<Character>();
             allCharacters.Clear();
             Character.GetCharactersInRange(healer.transform.position, radius, allCharacters);
+
+            // Fork: heal-over-time configurable. Reparte 'amount' total a lo
+            // largo de Heal_Duration en ticks de Heal_TickInterval.
+            bool hot = VL_TweakConfig.Priest_HealOverTime != null
+                       && VL_TweakConfig.Priest_HealOverTime.Value;
+
             foreach (Character p in allCharacters)
             {
                 if (!BaseAI.IsEnemy(p, healer))
                 {
-                    p.Heal(amount, true);
+                    if (!hot)
+                    {
+                        p.Heal(amount, true);
+                        continue;
+                    }
+
+                    float dur      = VL_TweakConfig.Priest_HealDuration.Value;
+                    float interval = VL_TweakConfig.Priest_HealInterval.Value;
+                    if (dur <= 0f)      dur = 10f;
+                    if (interval <= 0f) interval = 1f;
+                    int ticks = Mathf.Max(1, Mathf.RoundToInt(dur / interval));
+
+                    SE_Regeneration se = (SE_Regeneration)ScriptableObject.CreateInstance(typeof(SE_Regeneration));
+                    se.externalSetup    = true;
+                    se.m_ttl            = dur;
+                    se.m_damageInterval = interval;
+                    se.m_HealAmount     = amount / ticks; // total repartido
+                    se.doOnce           = false;
+                    se.m_tooltip        = $"Healing {se.m_HealAmount:0.#} hp every {interval:0.#}s";
+
+                    if (p == Player.m_localPlayer)
+                        p.GetSEMan().AddStatusEffect(se, true);
+                    else if (p.IsPlayer())
+                        p.GetSEMan().AddStatusEffect(se.name.GetStableHashCode(), true);
+                    else
+                        p.GetSEMan().AddStatusEffect(se, true);
                 }
             }
         }
@@ -178,20 +212,36 @@ namespace ValheimLegends
                         HealNearbyPlayers(player, 20f + (.2f * sHealLevel), .5f + UnityEngine.Random.Range(.4f, .6f) * sHealLevel * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestPurgeHeal);
                         List<Character> allCharacters = new List<Character>();
                         allCharacters.Clear();
-                        Character.GetCharactersInRange(player.transform.position, 20f + (.2f * sPurgeLevel), allCharacters);
+                        float purgeRadius = VL_TweakConfig.Priest_PurgeRadius != null
+                            ? VL_TweakConfig.Priest_PurgeRadius.Value : (20f + (.2f * sPurgeLevel));
+                        Character.GetCharactersInRange(player.transform.position, purgeRadius, allCharacters);
                         foreach (Character ch in allCharacters)
                         {
                             if (BaseAI.IsEnemy(player, ch) && VL_Utility.LOS_IsValid(ch, player.GetCenterPoint(), player.transform.position))
                             {
                                 Vector3 direction = (ch.transform.position - player.transform.position);
                                 HitData hitData = new HitData();
-                                hitData.m_damage.m_spirit = UnityEngine.Random.Range(4f + (.4f * sPurgeLevel), 8f + (.8f * sPurgeLevel)) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestPurgeDamage;
-                                hitData.m_damage.m_fire = UnityEngine.Random.Range(4f + (.4f * sPurgeLevel), 8f + (.8f * sPurgeLevel)) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestPurgeDamage;
+                                // Fork: Purge ahora hace daño de HIELO (configurable)
+                                hitData.m_damage.m_frost = (VL_TweakConfig.Priest_PurgeFrostDamage.Value
+                                    + sPurgeLevel * VL_TweakConfig.Priest_PurgeFrostScale.Value)
+                                    * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_priestPurgeDamage;
                                 hitData.m_pushForce = 0f;
                                 hitData.m_point = ch.GetEyePoint();
                                 hitData.m_dir = (player.transform.position - ch.transform.position);
                                 hitData.m_skill = ValheimLegends.EvocationSkill;
                                 ch.Damage(hitData);
+
+                                // Fork: "congelamiento" = SE_Slow de VL (freno fuerte,
+                                // probado y confiable). El daño m_frost además ya
+                                // ralentiza por mecánica vanilla.
+                                if (VL_TweakConfig.Priest_PurgeFreeze != null
+                                    && VL_TweakConfig.Priest_PurgeFreeze.Value
+                                    && ch.GetSEMan() != null)
+                                {
+                                    SE_Slow freeze = (SE_Slow)ScriptableObject.CreateInstance(typeof(SE_Slow));
+                                    freeze.m_ttl = VL_TweakConfig.Priest_PurgeFreezeDur.Value;
+                                    ch.GetSEMan().AddStatusEffect(freeze, true);
+                                }
                             }
                         }
                         //Skill gain

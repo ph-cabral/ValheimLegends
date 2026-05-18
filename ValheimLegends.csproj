@@ -77,6 +77,11 @@
     <Compile Include="SE_Shell.cs" />
     <Compile Include="SE_Enrage.cs" />
     <Compile Include="VL_Utility.cs" />
+    <Compile Include="VL_TweakConfig.cs" />
+    <Compile Include="VL_TauntHelper.cs" />
+    <Compile Include="Class_Pantheon.cs" />
+    <Compile Include="SE_Pantheon.cs" />
+    <Compile Include="VL_EpicMMOBridge.cs" />
     <Compile Include="ObjectDBPatches.cs" />
     <Compile Include="Class_Ranger.cs" />
     <Compile Include="Class_Berserker.cs" />
