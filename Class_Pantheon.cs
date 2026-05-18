@@ -31,71 +31,141 @@ namespace ValheimLegends
 
         public static void Process_Input(Player player)
         {
-            // ----- Q : Comet Spear (lanza lanzas) -----
+            // ----- Q : Embestida con lanza  /  Bloqueo + Q : lanzar lanza común -----
             if (VL_Utility.Ability1_Input_Down)
             {
-                if (!player.GetSEMan().HaveStatusEffect("SE_VL_Ability1_CD".GetStableHashCode()))
+                if (player.GetSEMan().HaveStatusEffect("SE_VL_Ability1_CD".GetStableHashCode()))
                 {
-                    if (player.GetStamina() >= VL_TweakConfig.Pan_Q_Cost.Value)
+                    player.Message(MessageHud.MessageType.TopLeft, "Ability not ready");
+                }
+                // ----- Bloqueo + Q : lanza lanza común de Valheim -----
+                else if (player.IsBlocking())
+                {
+                    if (player.GetStamina() >= VL_TweakConfig.Pan_Block_SpearStamina.Value)
                     {
                         StatusEffect se_cd = (SE_Ability1_CD)ScriptableObject.CreateInstance(typeof(SE_Ability1_CD));
                         se_cd.m_ttl = VL_TweakConfig.Pan_Q_Cooldown.Value;
                         player.GetSEMan().AddStatusEffect(se_cd);
-                        player.UseStamina(VL_TweakConfig.Pan_Q_Cost.Value);
+                        player.UseStamina(VL_TweakConfig.Pan_Block_SpearStamina.Value);
 
-                        float sLevel = player.GetSkills().GetSkillList()
-                            .FirstOrDefault(x => x.m_info == ValheimLegends.DisciplineSkillDef).m_level;
+                        VL_Utility.RotatePlayerToTarget(player);
+                        ZSyncAnimation z = (ZSyncAnimation)typeof(Player).GetField("m_zanim",
+                            BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player);
+                        z.StopAllCoroutines();
+                        z.SetTrigger("spear_throw"); // animación de lanza arrojadiza común
 
-                        ((ZSyncAnimation)typeof(Player).GetField("m_zanim",
-                            BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player))
-                            .SetTrigger("atgeir_attack2");
+                        Vector3 spawn = player.GetEyePoint() + player.GetLookDir() * .2f
+                                      + player.transform.up * .2f;
+                        GameObject prefab = ZNetScene.instance.GetPrefab("spear_bronze_projectile");
+                        if (prefab == null) prefab = ZNetScene.instance.GetPrefab("spear_flint_projectile");
+                        if (prefab == null) prefab = ZNetScene.instance.GetPrefab("spear_chitin_projectile");
+                        if (prefab == null) prefab = ZNetScene.instance.GetPrefab("VL_ThrowingKnife");
+                        if (prefab != null)
+                        {
+                            GameObject go = UnityEngine.Object.Instantiate(prefab, spawn, Quaternion.identity);
+                            Projectile pj = go.GetComponent<Projectile>();
+                            if (pj != null)
+                            {
+                                pj.name = "PantheonVanillaSpear";
+                                pj.m_respawnItemOnHit = false;
+                                pj.m_spawnOnHit = null;
+                                pj.m_ttl = 10f;
+                                pj.transform.localRotation = Quaternion.LookRotation(player.GetAimDir(spawn));
 
-                        bool emp = SE_Pantheon.ConsumeEmpowered();
-                        float mult = emp ? VL_TweakConfig.Pan_MortalWillMult.Value : 1f;
+                                HitData hd = new HitData();
+                                hd.m_damage.m_pierce = VL_TweakConfig.Pan_Block_SpearDamage.Value
+                                                     * VL_GlobalConfigs.g_DamageModifer;
+                                hd.m_skill = ValheimLegends.DisciplineSkill;
+                                hd.SetAttacker(player);
 
-                        Vector3 vector = player.GetEyePoint() + player.GetLookDir() * .2f
-                                       + player.transform.up * .2f;
-                        GameObject prefab = ZNetScene.instance.GetPrefab("VL_ThrowingKnife");
-                        GameObject go = UnityEngine.Object.Instantiate(prefab, vector, Quaternion.identity);
-                        Projectile pj = go.GetComponent<Projectile>();
-                        pj.name = "PantheonSpear";
-                        pj.m_respawnItemOnHit = false;
-                        pj.m_spawnOnHit = null;
-                        pj.m_ttl = 10f;
-                        pj.transform.localRotation = Quaternion.LookRotation(player.GetAimDir(vector));
-                        go.transform.localScale = Vector3.one * .5f;
-
-                        RaycastHit hitInfo;
-                        Vector3 pos = player.transform.position;
-                        Vector3 target = (!Physics.Raycast(vector, player.GetLookDir(), out hitInfo,
-                            float.PositiveInfinity, ScriptChar_Layermask) || !(bool)hitInfo.collider)
-                            ? (pos + player.GetLookDir() * 1000f) : hitInfo.point;
-
-                        HitData hd = new HitData();
-                        hd.m_damage.m_pierce = (VL_TweakConfig.Pan_Q_Damage.Value
-                            + sLevel * VL_TweakConfig.Pan_Q_DamageScale.Value)
-                            * mult * VL_GlobalConfigs.g_DamageModifer;
-                        hd.m_skill = ValheimLegends.DisciplineSkill;
-                        hd.SetAttacker(player);
-
-                        Vector3 a = Vector3.MoveTowards(go.transform.position, target, 1f);
-                        pj.Setup(player, (a - go.transform.position) * VL_TweakConfig.Pan_Q_Speed.Value,
-                                 -1f, hd, null, null);
-                        Traverse.Create(pj).Field("m_skill").SetValue(ValheimLegends.DisciplineSkill);
-
-                        if (emp)
-                            player.Message(MessageHud.MessageType.TopLeft, "Comet Spear empoderado!");
-
+                                Vector3 aim = player.GetAimDir(spawn);
+                                pj.Setup(player, aim * VL_TweakConfig.Pan_Q_Speed.Value, -1f, hd, null, null);
+                                Traverse.Create(pj).Field("m_skill").SetValue(ValheimLegends.DisciplineSkill);
+                            }
+                        }
                         player.RaiseSkill(ValheimLegends.DisciplineSkill, .5f);
                     }
                     else
                     {
-                        player.Message(MessageHud.MessageType.TopLeft, "Sin stamina para Comet Spear");
+                        player.Message(MessageHud.MessageType.TopLeft, "Sin stamina para la lanza");
                     }
+                }
+                // ----- Q : embestida con lanza -----
+                else if (player.GetStamina() >= VL_TweakConfig.Pan_Q_Cost.Value)
+                {
+                    StatusEffect se_cd = (SE_Ability1_CD)ScriptableObject.CreateInstance(typeof(SE_Ability1_CD));
+                    se_cd.m_ttl = VL_TweakConfig.Pan_Q_Cooldown.Value;
+                    player.GetSEMan().AddStatusEffect(se_cd);
+                    player.UseStamina(VL_TweakConfig.Pan_Q_Cost.Value);
+
+                    float sLevel = player.GetSkills().GetSkillList()
+                        .FirstOrDefault(x => x.m_info == ValheimLegends.DisciplineSkillDef).m_level;
+
+                    bool emp = SE_Pantheon.ConsumeEmpowered();
+                    float mult = emp ? VL_TweakConfig.Pan_MortalWillMult.Value : 1f;
+
+                    // Animación de estocada con lanza
+                    ((ZSyncAnimation)typeof(Player).GetField("m_zanim",
+                        BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player))
+                        .SetTrigger("spear_poke");
+
+                    // Empuje físico hacia adelante (embestida)
+                    Rigidbody body = Traverse.Create(player).Field("m_body").GetValue<Rigidbody>();
+                    if (body != null)
+                    {
+                        Vector3 look = player.GetLookDir();
+                        look.y = 0f;
+                        look.Normalize();
+                        Vector3 v = body.velocity;
+                        v.x = look.x * VL_TweakConfig.Pan_Q_ChargeForce.Value * mult;
+                        v.z = look.z * VL_TweakConfig.Pan_Q_ChargeForce.Value * mult;
+                        v.y = VL_TweakConfig.Pan_Q_ChargeUp.Value;
+                        body.velocity = v;
+                    }
+
+                    if (ZNetScene.instance != null)
+                    {
+                        GameObject fx = ZNetScene.instance.GetPrefab("vfx_perfectblock");
+                        if (fx != null)
+                            UnityEngine.Object.Instantiate(fx, player.transform.position, Quaternion.identity);
+                    }
+
+                    // Daño en cono frontal al embestir
+                    float dmg = (VL_TweakConfig.Pan_Q_Damage.Value
+                               + sLevel * VL_TweakConfig.Pan_Q_DamageScale.Value)
+                               * mult * VL_GlobalConfigs.g_DamageModifer;
+
+                    List<Character> chars = new List<Character>();
+                    Character.GetCharactersInRange(player.transform.position,
+                        VL_TweakConfig.Pan_Q_ChargeRadius.Value, chars);
+                    Vector3 fwd = player.transform.forward;
+                    foreach (Character ch in chars)
+                    {
+                        if (ch == null || ch == player) continue;
+                        if (!BaseAI.IsEnemy(player, ch)) continue;
+                        Vector3 d = ch.transform.position - player.transform.position;
+                        d.y = 0f;
+                        if (Vector3.Angle(fwd, d) > 60f) continue;
+
+                        HitData hd = new HitData();
+                        hd.m_damage.m_pierce = dmg;
+                        hd.m_pushForce = 20f;
+                        hd.m_point = ch.GetCenterPoint();
+                        hd.m_dir = d.normalized;
+                        hd.m_skill = ValheimLegends.DisciplineSkill;
+                        hd.SetAttacker(player);
+                        ch.Damage(hd);
+                        ch.Stagger(d.normalized);
+                    }
+
+                    if (emp)
+                        player.Message(MessageHud.MessageType.TopLeft, "Embestida empoderada!");
+
+                    player.RaiseSkill(ValheimLegends.DisciplineSkill, .5f);
                 }
                 else
                 {
-                    player.Message(MessageHud.MessageType.TopLeft, "Ability not ready");
+                    player.Message(MessageHud.MessageType.TopLeft, "Sin stamina para la embestida");
                 }
             }
             // ----- E : Aegis Assault (activar, dura un tiempo) -----

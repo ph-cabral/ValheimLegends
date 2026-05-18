@@ -63,6 +63,11 @@ namespace ValheimLegends
         public static ConfigEntry<float> Pan_Q_Cost;              // stamina
         public static ConfigEntry<float> Pan_Q_Cooldown;          // seg
         public static ConfigEntry<float> Pan_Q_Speed;             // velocidad del proyectil
+        public static ConfigEntry<float> Pan_Q_ChargeForce;       // fuerza horizontal de la embestida (Q)
+        public static ConfigEntry<float> Pan_Q_ChargeUp;          // componente vertical de la embestida
+        public static ConfigEntry<float> Pan_Q_ChargeRadius;      // alcance del golpe de la embestida
+        public static ConfigEntry<float> Pan_Block_SpearDamage;   // daño pierce de la lanza (bloqueo+Q)
+        public static ConfigEntry<float> Pan_Block_SpearStamina;  // stamina lanza (bloqueo+Q)
 
         // E - Aegis Assault (activable con duración: bloquea 100% al frente + fuego)
         public static ConfigEntry<float> Pan_E_Duration;          // cuánto dura el escudo (seg)
@@ -198,6 +203,16 @@ namespace ValheimLegends
                 Pan_Q_Cost = cfg.Bind(SEC_PAN, "Q_StaminaCost", 15f, "Stamina de Comet Spear.");
                 Pan_Q_Cooldown = cfg.Bind(SEC_PAN, "Q_Cooldown", 3f, "Cooldown de Comet Spear (seg).");
                 Pan_Q_Speed = cfg.Bind(SEC_PAN, "Q_ProjectileSpeed", 35f, "Velocidad de la lanza.");
+                Pan_Q_ChargeForce = cfg.Bind(SEC_PAN, "Q_ChargeForce", 22f,
+                    "Fuerza horizontal de la embestida con lanza (Q).");
+                Pan_Q_ChargeUp = cfg.Bind(SEC_PAN, "Q_ChargeUp", 4f,
+                    "Componente vertical de la embestida.");
+                Pan_Q_ChargeRadius = cfg.Bind(SEC_PAN, "Q_ChargeRadius", 3.5f,
+                    "Alcance del golpe frontal de la embestida.");
+                Pan_Block_SpearDamage = cfg.Bind(SEC_PAN, "Block_SpearDamage", 45f,
+                    "Daño pierce de la lanza arrojadiza (bloqueo + Q).");
+                Pan_Block_SpearStamina = cfg.Bind(SEC_PAN, "Block_SpearStamina", 12f,
+                    "Stamina al lanzar la lanza (bloqueo + Q).");
 
                 Pan_E_Duration = cfg.Bind(SEC_PAN, "E_Duration", 6f,
                     "Cuántos segundos dura Aegis (bloqueo frontal 100% + daño de fuego).");

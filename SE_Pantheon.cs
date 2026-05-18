@@ -75,6 +75,12 @@ namespace ValheimLegends
         public override void UpdateStatusEffect(float dt)
         {
             base.UpdateStatusEffect(dt);
+
+            // Mostrar la cantidad de cargas de Mortal Will en el icono del buff
+            // (mismo patrón que SE_Valkyrie: m_ttl = contador, m_time = 0).
+            m_ttl = mortalWillCount;
+            m_time = 0;
+
             if (m_character == null) return;
 
             if (!aegisActive) return;

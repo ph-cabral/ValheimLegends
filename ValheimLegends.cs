@@ -262,6 +262,10 @@ namespace ValheimLegends
                 {
                     return (int)PlayerClass.Valkyrie;
                 }                
+                else if (vl_player.vl_class == PlayerClass.Pantheon)
+                {
+                    return (int)PlayerClass.Pantheon;
+                }
                 else
                 {
                     return (int)PlayerClass.None;
