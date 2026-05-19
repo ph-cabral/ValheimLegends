@@ -1466,8 +1466,10 @@ namespace ValheimLegends
         [HarmonyPatch(typeof(Character), "UpdateMotion", null)]
         public class ClassMotionUpdate_Postfix
         {
-            public static bool Prefix(Character __instance, ref bool ___m_flying, float ___m_waterLevel)
+            public static void Postfix(Character __instance, ref bool ___m_flying, float ___m_waterLevel)
             {
+                if (__instance != Player.m_localPlayer) return;
+
                 if (vl_player != null && vl_player.vl_class == PlayerClass.Shaman && Class_Shaman.isWaterWalking)
                 {
                     ___m_flying = true;
@@ -1478,7 +1480,6 @@ namespace ValheimLegends
                 {
                     ___m_flying = true;
                 }
-                return true;
             }
         }
 

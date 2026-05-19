@@ -30,13 +30,18 @@ namespace ValheimLegends
 
         private static void ToggleForm(Player player, DruidForm desired)
         {
-            // Si ya está en esa forma -> revertir
-            if (activeForm == desired || player.GetSEMan().HaveStatusEffect("SE_VL_DruidShapeshift".GetStableHashCode()))
+            bool hadSE = player.GetSEMan().HaveStatusEffect("SE_VL_DruidShapeshift".GetStableHashCode());
+            bool wasSameForm = (activeForm == desired);
+
+            // Si hay forma activa -> quitarla primero
+            if (hadSE || activeForm != DruidForm.None)
             {
                 player.GetSEMan().RemoveStatusEffect("SE_VL_DruidShapeshift".GetStableHashCode());
                 activeForm = DruidForm.None;
-                if (activeForm == desired) return;
             }
+
+            // Si pulsó la misma forma activa -> solo revertir y salir
+            if (wasSameForm) return;
 
             if (player.GetStamina() < 10f)
             {
@@ -74,14 +79,38 @@ namespace ValheimLegends
             activeForm = desired;
         }
 
+        // "block" = clic derecho del mouse mantenido (no requiere escudo)
+        private static bool BlockHeld()
+        {
+            return Input.GetMouseButton(1) || ZInput.GetButton("Block") || ZInput.GetButton("JoyBlock");
+        }
+
         public static void Process_Input(Player player, float altitude)
         {
-            // ===== Fork: Shapeshift con block (botón secundario) + Q / E / R =====
-            if (player.IsBlocking())
+            // ===== Fork: Shapeshift con block (clic derecho) + Space / Ctrl / Q =====
+            if (BlockHeld())
             {
-                if (VL_Utility.Ability1_Input_Down) { ToggleForm(player, DruidForm.Dragon); return; }
-                if (VL_Utility.Ability2_Input_Down) { ToggleForm(player, DruidForm.Abomination); return; }
-                if (VL_Utility.Ability3_Input_Down) { ToggleForm(player, DruidForm.Serpent); return; }
+                if (Input.GetKeyDown(KeyCode.Space)) { ToggleForm(player, DruidForm.Dragon);      return; }
+                if (Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl)) { ToggleForm(player, DruidForm.Serpent); return; }
+                if (Input.GetKeyDown(KeyCode.Q)) { ToggleForm(player, DruidForm.Abomination); return; }
+            }
+
+            // Control de altitud (Space sube, Ctrl baja) solo SIN clic derecho,
+            // para no chocar con la activación de formas
+            if ((activeForm == DruidForm.Dragon || activeForm == DruidForm.Serpent) && !BlockHeld())
+            {
+                Rigidbody rb = player.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    float vy = rb.velocity.y;
+                    if (Input.GetKey(KeyCode.Space))
+                        vy = 8f;
+                    else if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+                        vy = -8f;
+                    else
+                        vy = Mathf.Lerp(vy, 0f, Time.deltaTime * 4f); // hover estable
+                    rb.velocity = new Vector3(rb.velocity.x, vy, rb.velocity.z);
+                }
             }
 
             Process_Abilities(player, altitude);
