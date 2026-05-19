@@ -104,10 +104,10 @@ namespace ValheimLegends
                     bool emp = SE_Pantheon.ConsumeEmpowered();
                     float mult = emp ? VL_TweakConfig.Pan_MortalWillMult.Value : 1f;
 
-                    // Animación de estocada larga con espada
+                    // Animación de estocada de espada de una mano (ataque secundario), sin importar el arma equipada
                     ((ZSyncAnimation)typeof(Player).GetField("m_zanim",
                         BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player))
-                        .SetTrigger("swordstaff_attack");
+                        .SetTrigger("sword_secondary");
 
                     // Empuje físico hacia adelante (embestida)
                     Rigidbody body = Traverse.Create(player).Field("m_body").GetValue<Rigidbody>();

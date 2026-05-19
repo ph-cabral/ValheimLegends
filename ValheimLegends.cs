@@ -1436,10 +1436,22 @@ namespace ValheimLegends
         }
 
         // Fork: la Serpiente de océano no recibe daño de ahogamiento
-        [HarmonyPatch(typeof(Player), "UpdateBreath", null)]
+        [HarmonyPatch]
         public class SerpentNoDrown_Patch
         {
-            public static bool Prefix(Player __instance)
+            public static System.Reflection.MethodBase TargetMethod()
+            {
+                return AccessTools.Method(typeof(Player), "UpdateBreath")
+                    ?? AccessTools.Method(typeof(Player), "UpdateEnvStatusEffects")
+                    ?? AccessTools.Method(typeof(Character), "UpdateBreath");
+            }
+
+            public static bool Prepare()
+            {
+                return TargetMethod() != null;
+            }
+
+            public static void Postfix(Player __instance)
             {
                 if (__instance == Player.m_localPlayer
                     && vl_player != null && vl_player.vl_class == PlayerClass.Druid
@@ -1447,9 +1459,7 @@ namespace ValheimLegends
                 {
                     // Mantiene el aire lleno y omite el daño de ahogamiento
                     Traverse.Create(root: __instance).Field("m_breath").SetValue(999f);
-                    return false;
                 }
-                return true;
             }
         }
 
