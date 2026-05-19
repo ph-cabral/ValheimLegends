@@ -82,22 +82,43 @@ namespace ValheimLegends
         // "block" = clic derecho del mouse mantenido (no requiere escudo)
         private static bool BlockHeld()
         {
-            return Input.GetMouseButton(1) || ZInput.GetButton("Block") || ZInput.GetButton("JoyBlock");
+            return Input.GetMouseButton(1) || Input.GetKey(KeyCode.Mouse1)
+                || ZInput.GetButton("Block") || ZInput.GetButton("JoyBlock");
         }
+
+        // Latch anti-repetición (GetKeyDown se pierde dentro del Postfix)
+        private static bool s_comboLatch = false;
 
         public static void Process_Input(Player player, float altitude)
         {
             // ===== Fork: Shapeshift con block (clic derecho) + Space / Ctrl / Q =====
             if (BlockHeld())
             {
-                if (Input.GetKeyDown(KeyCode.Space)) { ToggleForm(player, DruidForm.Dragon);      return; }
-                if (Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl)) { ToggleForm(player, DruidForm.Serpent); return; }
-                if (Input.GetKeyDown(KeyCode.Q)) { ToggleForm(player, DruidForm.Abomination); return; }
+                bool q = Input.GetKey(KeyCode.Q);
+                bool e = Input.GetKey(KeyCode.E);
+                bool r = Input.GetKey(KeyCode.R);
+
+                if (!s_comboLatch && (q || e || r))
+                {
+                    s_comboLatch = true;
+                    if (e)      { ToggleForm(player, DruidForm.Dragon);      return; }
+                    else if (r) { ToggleForm(player, DruidForm.Serpent);     return; }
+                    else if (q) { ToggleForm(player, DruidForm.Abomination); return; }
+                }
+            }
+            else
+            {
+                s_comboLatch = false;
+            }
+            // libera el latch al soltar las 3 teclas (permite re-trigger sin soltar clic)
+            if (s_comboLatch && !Input.GetKey(KeyCode.Q)
+                && !Input.GetKey(KeyCode.E) && !Input.GetKey(KeyCode.R))
+            {
+                s_comboLatch = false;
             }
 
-            // Control de altitud (Space sube, Ctrl baja) solo SIN clic derecho,
-            // para no chocar con la activación de formas
-            if ((activeForm == DruidForm.Dragon || activeForm == DruidForm.Serpent) && !BlockHeld())
+            // Control de altitud: Space sube, Ctrl baja
+            if (activeForm == DruidForm.Dragon || activeForm == DruidForm.Serpent)
             {
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if (rb != null)
