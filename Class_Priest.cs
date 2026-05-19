@@ -509,7 +509,6 @@ namespace ValheimLegends
                         player.UseStamina(VL_Utility.GetPurgeCost);
 
                         //Effects, animations, and sounds
-                        player.StartEmote("challenge");
                         GO_CastFX = UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_VL_Purge"), player.GetCenterPoint(), Quaternion.identity);
 
                         //Lingering effects

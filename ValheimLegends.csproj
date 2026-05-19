@@ -72,6 +72,7 @@
     <Compile Include="SE_PowerShot.cs" />
     <Compile Include="SE_Execute.cs" />
     <Compile Include="SE_Berserk.cs" />
+    <Compile Include="SE_DruidShapeshift.cs" />
     <Compile Include="SE_ShadowStalk.cs" />
     <Compile Include="SE_SpiritDrain.cs" />
     <Compile Include="SE_Shell.cs" />

@@ -26,7 +26,68 @@ namespace ValheimLegends
         private static int rootCount;
         private static int rootCountTrigger;
 
+        public static DruidForm activeForm = DruidForm.None;
+
+        private static void ToggleForm(Player player, DruidForm desired)
+        {
+            // Si ya está en esa forma -> revertir
+            if (activeForm == desired || player.GetSEMan().HaveStatusEffect("SE_VL_DruidShapeshift".GetStableHashCode()))
+            {
+                player.GetSEMan().RemoveStatusEffect("SE_VL_DruidShapeshift".GetStableHashCode());
+                activeForm = DruidForm.None;
+                if (activeForm == desired) return;
+            }
+
+            if (player.GetStamina() < 10f)
+            {
+                player.Message(MessageHud.MessageType.TopLeft, "Not enough stamina to shapeshift");
+                return;
+            }
+
+            SE_DruidShapeshift se = (SE_DruidShapeshift)ScriptableObject.CreateInstance(typeof(SE_DruidShapeshift));
+            se.form = desired;
+            switch (desired)
+            {
+                case DruidForm.Dragon:
+                    se.staminaDrainPerSec = VL_TweakConfig.Druid_DragonDrain.Value;
+                    se.resistMultiplier   = VL_TweakConfig.Druid_DragonResist.Value;
+                    se.damageModifier     = VL_TweakConfig.Druid_DragonDamage.Value;
+                    se.scale              = VL_TweakConfig.Druid_DragonScale.Value;
+                    se.speedModifier      = 1f;
+                    break;
+                case DruidForm.Abomination:
+                    se.staminaDrainPerSec = VL_TweakConfig.Druid_AboDrain.Value;
+                    se.resistMultiplier   = VL_TweakConfig.Druid_AboResist.Value;
+                    se.damageModifier     = VL_TweakConfig.Druid_AboDamage.Value;
+                    se.scale              = VL_TweakConfig.Druid_AboScale.Value;
+                    se.speedModifier      = 1f;
+                    break;
+                case DruidForm.Serpent:
+                    se.staminaDrainPerSec = VL_TweakConfig.Druid_SerpentDrain.Value;
+                    se.resistMultiplier   = VL_TweakConfig.Druid_SerpentResist.Value;
+                    se.damageModifier     = 1f;
+                    se.scale              = VL_TweakConfig.Druid_SerpentScale.Value;
+                    se.speedModifier      = VL_TweakConfig.Druid_SerpentSpeed.Value;
+                    break;
+            }
+            player.GetSEMan().AddStatusEffect(se);
+            activeForm = desired;
+        }
+
         public static void Process_Input(Player player, float altitude)
+        {
+            // ===== Fork: Shapeshift con block (botón secundario) + Q / E / R =====
+            if (player.IsBlocking())
+            {
+                if (VL_Utility.Ability1_Input_Down) { ToggleForm(player, DruidForm.Dragon); return; }
+                if (VL_Utility.Ability2_Input_Down) { ToggleForm(player, DruidForm.Abomination); return; }
+                if (VL_Utility.Ability3_Input_Down) { ToggleForm(player, DruidForm.Serpent); return; }
+            }
+
+            Process_Abilities(player, altitude);
+        }
+
+        private static void Process_Abilities(Player player, float altitude)
         {
             System.Random rnd = new System.Random();
             Vector3 rootVec = default(Vector3);
@@ -49,8 +110,6 @@ namespace ValheimLegends
 
                         //Effects, animations, and sounds
                         ValheimLegends.shouldUseGuardianPower = false;
-                        ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(Player.m_localPlayer)).SetTrigger("gpower");
-                        ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(Player.m_localPlayer)).SetSpeed(.3f);
 
                         //Lingering effects
 

@@ -1435,12 +1435,36 @@ namespace ValheimLegends
             }
         }
 
+        // Fork: la Serpiente de océano no recibe daño de ahogamiento
+        [HarmonyPatch(typeof(Player), "UpdateBreath", null)]
+        public class SerpentNoDrown_Patch
+        {
+            public static bool Prefix(Player __instance)
+            {
+                if (__instance == Player.m_localPlayer
+                    && vl_player != null && vl_player.vl_class == PlayerClass.Druid
+                    && Class_Druid.activeForm == DruidForm.Serpent)
+                {
+                    // Mantiene el aire lleno y omite el daño de ahogamiento
+                    Traverse.Create(root: __instance).Field("m_breath").SetValue(999f);
+                    return false;
+                }
+                return true;
+            }
+        }
+
         [HarmonyPatch(typeof(Character), "UpdateMotion", null)]
         public class ClassMotionUpdate_Postfix
         {
             public static bool Prefix(Character __instance, ref bool ___m_flying, float ___m_waterLevel)
             {
                 if (vl_player != null && vl_player.vl_class == PlayerClass.Shaman && Class_Shaman.isWaterWalking)
+                {
+                    ___m_flying = true;
+                }
+                // Fork: Dragón vuela; Serpiente se mueve libre bajo el agua
+                if (vl_player != null && vl_player.vl_class == PlayerClass.Druid
+                    && (Class_Druid.activeForm == DruidForm.Dragon || Class_Druid.activeForm == DruidForm.Serpent))
                 {
                     ___m_flying = true;
                 }

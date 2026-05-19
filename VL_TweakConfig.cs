@@ -26,6 +26,20 @@ namespace ValheimLegends
         private static readonly Dictionary<string, ConfigEntry<float>> _cd =
             new Dictionary<string, ConfigEntry<float>>();
 
+        // ---- Druid Shapeshift (block + Q/E/R) ----
+        public static ConfigEntry<float> Druid_DragonDrain;
+        public static ConfigEntry<float> Druid_DragonResist;
+        public static ConfigEntry<float> Druid_DragonDamage;
+        public static ConfigEntry<float> Druid_DragonScale;
+        public static ConfigEntry<float> Druid_AboDrain;
+        public static ConfigEntry<float> Druid_AboResist;
+        public static ConfigEntry<float> Druid_AboDamage;
+        public static ConfigEntry<float> Druid_AboScale;
+        public static ConfigEntry<float> Druid_SerpentDrain;
+        public static ConfigEntry<float> Druid_SerpentResist;
+        public static ConfigEntry<float> Druid_SerpentSpeed;
+        public static ConfigEntry<float> Druid_SerpentScale;
+
         // ---- Druid Regeneration ----
         public static ConfigEntry<float> Druid_RegenDuration;     // TTL total del HoT (seg)
         public static ConfigEntry<float> Druid_RegenInterval;     // cada cuántos seg cura
@@ -164,6 +178,33 @@ namespace ValheimLegends
                         -1f,
                         $"Cooldown de {d.key} en segundos. -1 = usar default de VL ({d.def}s).");
                 }
+
+                Druid_DragonDrain  = cfg.Bind(SEC_DRU, "Dragon_StaminaDrainPerSec", 6f,
+                    "Stamina por segundo que drena la forma Dragón (block + Q).");
+                Druid_DragonResist = cfg.Bind(SEC_DRU, "Dragon_DamageTakenMult", 0.45f,
+                    "Daño recibido en forma Dragón (0.45 = recibe 45%). Inmune al frío siempre.");
+                Druid_DragonDamage = cfg.Bind(SEC_DRU, "Dragon_DamageMult", 1.8f,
+                    "Multiplicador del daño infligido en forma Dragón.");
+                Druid_DragonScale  = cfg.Bind(SEC_DRU, "Dragon_Scale", 2.2f,
+                    "Escala del modelo en forma Dragón.");
+
+                Druid_AboDrain  = cfg.Bind(SEC_DRU, "Abomination_StaminaDrainPerSec", 5f,
+                    "Stamina por segundo que drena la forma Abominación (block + E).");
+                Druid_AboResist = cfg.Bind(SEC_DRU, "Abomination_DamageTakenMult", 0.4f,
+                    "Daño recibido en forma Abominación (0.4 = recibe 40%). Inmune al veneno siempre.");
+                Druid_AboDamage = cfg.Bind(SEC_DRU, "Abomination_DamageMult", 2f,
+                    "Multiplicador del daño infligido en forma Abominación.");
+                Druid_AboScale  = cfg.Bind(SEC_DRU, "Abomination_Scale", 2f,
+                    "Escala del modelo en forma Abominación.");
+
+                Druid_SerpentDrain  = cfg.Bind(SEC_DRU, "Serpent_StaminaDrainPerSec", 4f,
+                    "Stamina por segundo que drena la forma Serpiente de océano (block + R).");
+                Druid_SerpentResist = cfg.Bind(SEC_DRU, "Serpent_DamageTakenMult", 0.5f,
+                    "Daño recibido en forma Serpiente (0.5 = recibe 50%). No recibe daño de ahogamiento.");
+                Druid_SerpentSpeed  = cfg.Bind(SEC_DRU, "Serpent_SpeedMult", 1.6f,
+                    "Multiplicador de velocidad de movimiento en forma Serpiente.");
+                Druid_SerpentScale  = cfg.Bind(SEC_DRU, "Serpent_Scale", 1.8f,
+                    "Escala del modelo en forma Serpiente.");
 
                 Druid_RegenDuration = cfg.Bind(SEC_DRU, "Regen_Duration", 60f,
                     "Duración total del heal-over-time de Regeneration (segundos).");
