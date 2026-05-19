@@ -36,13 +36,7 @@ namespace ValheimLegends
                 MonsterAI ai = ch.GetComponent<MonsterAI>();
                 if (ai == null) continue;
 
-                Traverse.Create(ai).Method("SetTarget", new object[] { player }).GetValue();
-                Traverse.Create(ai).Method("SetAlerted", new object[] { true }).GetValue();
-
-                VL_TauntTicker ticker = ch.gameObject.GetComponent<VL_TauntTicker>();
-                if (ticker == null)
-                    ticker = ch.gameObject.AddComponent<VL_TauntTicker>();
-                ticker.Begin(player, duration);
+                ForceTarget(ai, player);
                 count++;
             }
 
@@ -52,6 +46,29 @@ namespace ValheimLegends
                 if (fx != null)
                     Object.Instantiate(fx, player.transform.position, Quaternion.identity);
             }
+        }
+
+        // SetTarget(Character) y SetAlerted(bool) son privados; resolvemos el
+        // MethodInfo por firma exacta (Traverse fallaba al pasar Player donde
+        // se espera Character, dejando el taunt sin efecto).
+        internal static readonly System.Reflection.MethodInfo _miSetTarget =
+            AccessTools.Method(typeof(MonsterAI), "SetTarget", new[] { typeof(Character) });
+        internal static readonly System.Reflection.MethodInfo _miSetAlerted =
+            AccessTools.Method(typeof(MonsterAI), "SetAlerted", new[] { typeof(bool) });
+        internal static readonly System.Reflection.MethodInfo _miGetTargetCreature =
+            AccessTools.Method(typeof(MonsterAI), "GetTargetCreature");
+
+        internal static void ForceTarget(MonsterAI ai, Player player)
+        {
+            if (_miSetTarget != null)
+                _miSetTarget.Invoke(ai, new object[] { (Character)player });
+            if (_miSetAlerted != null)
+                _miSetAlerted.Invoke(ai, new object[] { true });
+
+            VL_TauntTicker ticker = ai.gameObject.GetComponent<VL_TauntTicker>();
+            if (ticker == null)
+                ticker = ai.gameObject.AddComponent<VL_TauntTicker>();
+            ticker.Begin(player, VL_TweakConfig.Valk_TauntDuration.Value);
         }
     }
 
@@ -77,11 +94,15 @@ namespace ValheimLegends
             if (_ai == null || _target == null) { Destroy(this); return; }
             if (Time.time >= _expiresAt) { Destroy(this); return; }
 
-            Character current = Traverse.Create(_ai).Method("GetTargetCreature").GetValue<Character>();
+            Character current = VL_TauntHelper._miGetTargetCreature != null
+                ? VL_TauntHelper._miGetTargetCreature.Invoke(_ai, null) as Character
+                : null;
             if (current != _target)
             {
-                Traverse.Create(_ai).Method("SetTarget", new object[] { _target }).GetValue();
-                Traverse.Create(_ai).Method("SetAlerted", new object[] { true }).GetValue();
+                if (VL_TauntHelper._miSetTarget != null)
+                    VL_TauntHelper._miSetTarget.Invoke(_ai, new object[] { (Character)_target });
+                if (VL_TauntHelper._miSetAlerted != null)
+                    VL_TauntHelper._miSetAlerted.Invoke(_ai, new object[] { true });
             }
         }
     }

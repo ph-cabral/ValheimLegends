@@ -278,7 +278,7 @@ namespace ValheimLegends
                     {
                         //Ability Cooldown
                         StatusEffect se_cd = (SE_Ability2_CD)ScriptableObject.CreateInstance(typeof(SE_Ability2_CD));
-                        se_cd.m_ttl = VL_Utility.GetStaggerCooldownTime * VL_GlobalConfigs.c_valkyrieStaggerCooldown;
+                        se_cd.m_ttl = VL_Utility.GetStaggerCooldownTime;
                         player.GetSEMan().AddStatusEffect(se_cd);
 
                         //Ability Cost

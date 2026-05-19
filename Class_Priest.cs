@@ -458,7 +458,6 @@ namespace ValheimLegends
 
                         //Effects, animations, and sounds
                         ValheimLegends.shouldUseGuardianPower = false;
-                        ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("gpower");
                         UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_VL_HealPulse"), player.GetCenterPoint(), Quaternion.identity);
 
                         // Fork: limpieza de estados negativos + curación INSTANTÁNEA de un solo golpe.
@@ -586,7 +585,6 @@ namespace ValheimLegends
                         float sLevel = player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AlterationSkillDef).m_level;
 
                         //Effects, animations, and sounds
-                        ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("battleaxe_attack0");
                         UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("fx_VL_HealPulse"), player.GetCenterPoint(), Quaternion.identity);
 
                         // Fork: Sanctify ahora es un HEAL-OVER-TIME (separado del Heal instantáneo).
