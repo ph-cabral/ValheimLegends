@@ -41,7 +41,11 @@ namespace ValheimLegends
             }
 
             // Si pulsó la misma forma activa -> solo revertir y salir
-            if (wasSameForm) return;
+            if (wasSameForm)
+            {
+                ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("gpower");
+                return;
+            }
 
             if (player.GetStamina() < 10f)
             {
@@ -77,6 +81,8 @@ namespace ValheimLegends
             }
             player.GetSEMan().AddStatusEffect(se);
             activeForm = desired;
+
+            ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(player)).SetTrigger("gpower");
         }
 
         // "block" = clic derecho del mouse mantenido (no requiere escudo)
