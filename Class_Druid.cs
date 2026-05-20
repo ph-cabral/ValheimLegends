@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -95,7 +95,7 @@ namespace ValheimLegends
         // Latch anti-repetición (GetKeyDown se pierde dentro del Postfix)
         private static bool s_comboLatch = false;
 
-        public static void Process_Input(Player player, float altitude)
+        public static void Process_Input(Player player, ref Rigidbody playerBody, float altitude)
         {
             // ===== Fork: Shapeshift con block (clic derecho) + Space / Ctrl / Q =====
             if (BlockHeld())
@@ -123,20 +123,30 @@ namespace ValheimLegends
                 s_comboLatch = false;
             }
 
-            // Control de altitud: Space sube, Ctrl baja
+            // Control de altitud: Salto sube, Crouch / Ctrl / C / X baja
             if (activeForm == DruidForm.Dragon || activeForm == DruidForm.Serpent)
             {
-                Rigidbody rb = player.GetComponent<Rigidbody>();
-                if (rb != null)
+                if (playerBody != null)
                 {
-                    float vy = rb.velocity.y;
-                    if (Input.GetKey(KeyCode.Space))
-                        vy = 8f;
-                    else if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
-                        vy = -8f;
-                    else
-                        vy = Mathf.Lerp(vy, 0f, Time.deltaTime * 4f); // hover estable
-                    rb.velocity = new Vector3(rb.velocity.x, vy, rb.velocity.z);
+                    Vector3 vel = playerBody.velocity;
+
+                    bool wantUp = ZInput.GetButton("Jump") || Input.GetKey(KeyCode.Space);
+                    bool wantDown =
+                           Input.GetKey(KeyCode.LeftControl)
+                        || Input.GetKey(KeyCode.RightControl)
+                        || Input.GetKey(KeyCode.LeftShift)
+                        || Input.GetKey(KeyCode.C)
+                        || Input.GetKey(KeyCode.X)
+                        || Input.GetKey(KeyCode.Z);
+                    // ZInput.GetButton es defensivo: si el bind no existe, lanza; lo envolvemos
+                    try { if (ZInput.GetButton("Crouch")) wantDown = true; } catch { }
+                    try { if (ZInput.GetButton("JoyCrouch")) wantDown = true; } catch { }
+
+                    if (wantUp)        vel.y = 8f;
+                    else if (wantDown) vel.y = -8f;
+                    else               vel.y = Mathf.Lerp(vel.y, 0f, Time.deltaTime * 4f);
+
+                    playerBody.velocity = vel;
                 }
             }
 

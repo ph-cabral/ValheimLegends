@@ -1124,6 +1124,18 @@ namespace ValheimLegends
                     {
                         return false;
                     }
+                    // Fork: Valkyrie con escudo equipado -> 80% reducción pasiva
+                    // (100% si Bulwark está activo)
+                    if (vl_player != null && vl_player.vl_class == PlayerClass.Valkyrie
+                        && Class_Valkyrie.PlayerUsingShield)
+                    {
+                        if (__instance.GetSEMan().HaveStatusEffect("SE_VL_Bulwark".GetStableHashCode()))
+                        {
+                            // Bulwark: inmunidad total
+                            return false;
+                        }
+                        hit.m_damage.Modify(0.2f); // recibe solo 20%
+                    }
                     //if(__instance.GetSEMan().HaveStatusEffect("SE_VL_Bulwark".GetStableHashCode()))
                     //{
                     //    //ZLog.Log("has status effect SE_VL_Bulwark");
@@ -2180,7 +2192,7 @@ namespace ValheimLegends
                                         Class_Mage.Process_Input(localPlayer, ___m_maxAirAltitude);
                                         break;
                                     case PlayerClass.Druid:
-                                        Class_Druid.Process_Input(localPlayer, ___m_maxAirAltitude);
+                                        Class_Druid.Process_Input(localPlayer, ref ___m_body, ___m_maxAirAltitude);
                                         break;
                                     case PlayerClass.Shaman:
                                         Class_Shaman.Process_Input(localPlayer, ref ___m_body, ref ___m_maxAirAltitude, ref ___m_lastGroundTouch, ___m_waterLevel);
