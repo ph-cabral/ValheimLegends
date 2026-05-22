@@ -23,6 +23,9 @@ namespace ValheimLegends
         private const string SEC_VAL  = "Tweaks Valkyrie Taunt";
         private const string SEC_PAN  = "Class Pantheon";
 
+        // Entradas sincronizadas servidor->cliente (usada por VL_ConfigSync). Key = clave del cfg.
+        public static Dictionary<string, ConfigEntryBase> SyncedEntries = new Dictionary<string, ConfigEntryBase>();
+
         private static readonly Dictionary<string, ConfigEntry<float>> _cd =
             new Dictionary<string, ConfigEntry<float>>();
 
@@ -44,6 +47,10 @@ namespace ValheimLegends
         public static ConfigEntry<float> Druid_RegenDuration;     // TTL total del HoT (seg)
         public static ConfigEntry<float> Druid_RegenInterval;     // cada cuántos seg cura
         public static ConfigEntry<bool>  Druid_RegenCleansePoison; // quita veneno al activar
+
+        // ---- Druid Trophy Summon ----
+        public static ConfigEntry<float> Druid_TrophyLeashDistance;   // distancia max antes de teleport
+        public static ConfigEntry<float> Druid_TrophyFollowCheckRate; // cada cuantos seg revisar
 
         // ---- Priest Heal (ability3) ----
         public static ConfigEntry<bool>  Priest_HealOverTime;     // true = HoT en vez de instantáneo
@@ -212,6 +219,14 @@ namespace ValheimLegends
                     "Cada cuántos segundos cura Regeneration.");
                 Druid_RegenCleansePoison = cfg.Bind(SEC_DRU, "Regen_CleansePoison", true,
                     "Si true, al activar Regeneration quita el veneno a los aliados curados.");
+
+                Druid_TrophyLeashDistance = cfg.Bind(SEC_DRU, "TrophySummon_LeashDistance", 25f,
+                    "Distancia maxima (en metros) a la que pueden estar los monstruos invocados por trofeo antes de ser forzados a teleportarse cerca del druida.");
+                Druid_TrophyFollowCheckRate = cfg.Bind(SEC_DRU, "TrophySummon_FollowCheckRate", 2f,
+                    "Cada cuantos segundos se revisa la distancia de los monstruos invocados por trofeo (menor = mas reactivo, mas costoso).");
+
+                SyncedEntries["TrophySummon_LeashDistance"] = Druid_TrophyLeashDistance;
+                SyncedEntries["TrophySummon_FollowCheckRate"] = Druid_TrophyFollowCheckRate;
 
                 // Heal (ability3) = curación INSTANTÁNEA de un golpe (sin canalizar, sin HoT)
                 Priest_HealOverTime = cfg.Bind(SEC_PRI, "Heal_OverTime", false,

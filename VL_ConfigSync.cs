@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 
@@ -155,6 +156,42 @@ namespace ValheimLegends
                             {
                                 VL_GlobalConfigs.ItemStrings[key] = val;
                                 //ZLog.Log("config value is " + VL_GlobalConfigs.ConfigStrings[key]);
+                            }
+                        }
+                        else if (VL_TweakConfig.SyncedEntries.ContainsKey(key))
+                        {
+                            // Fork: sincronizar entries de VL_TweakConfig (prefijo vl_svr_)
+                            string val = line.Substring(line.IndexOf('=') + 1).Trim(trm);
+                            try
+                            {
+                                ConfigEntryBase entry = VL_TweakConfig.SyncedEntries[key];
+                                Type t = entry.SettingType;
+                                object parsed = null;
+                                if (t == typeof(float))
+                                {
+                                    string vv = val.Replace(",", ".");
+                                    parsed = float.Parse(vv, System.Globalization.CultureInfo.InvariantCulture);
+                                }
+                                else if (t == typeof(int))
+                                {
+                                    parsed = int.Parse(val, System.Globalization.CultureInfo.InvariantCulture);
+                                }
+                                else if (t == typeof(bool))
+                                {
+                                    parsed = val.Trim().ToLower() == "true";
+                                }
+                                else if (t == typeof(string))
+                                {
+                                    parsed = val;
+                                }
+                                if (parsed != null)
+                                {
+                                    entry.BoxedValue = parsed;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                ZLog.LogWarning("VL sync tweak failed for " + key + ": " + ex.Message);
                             }
                         }
                     }

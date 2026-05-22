@@ -28,6 +28,120 @@ namespace ValheimLegends
 
         public static DruidForm activeForm = DruidForm.None;
 
+        // ===== Trophy Summon =====
+        public static List<Character> trophySummons = new List<Character>();
+        public static Player trophySummonOwner;
+
+        private static readonly Dictionary<string, string> TrophyToPrefab = new Dictionary<string, string>
+        {
+            { "TrophyDragonQueen", "Dragon" },
+            { "TrophyTheElder",    "gd_king" },
+            { "TrophyEikthyr",     "Eikthyr" },
+            { "TrophyBonemass",    "Bonemass" },
+            { "TrophyYagluth",     "GoblinKing" },
+            { "TrophySeekerQueen", "SeekerQueen" },
+            { "TrophyCultist",     "Fenring_Cultist" },
+            { "TrophyCultist_Hildir", "Fenring_Cultist_Hildir" },
+            { "TrophyHatchling",   "Hatchling" },
+            { "TrophyUlv",         "Ulv" },
+            { "TrophyLox",         "Lox" },
+            { "TrophyFenring",     "Fenring" },
+            { "TrophyGreydwarfShaman", "Greydwarf_Shaman" },
+            { "TrophyGreydwarfBrute",  "Greydwarf_Elite" },
+            { "TrophyGoblinShaman",    "GoblinShaman" },
+            { "TrophyGoblinBrute",     "GoblinBrute" },
+            { "TrophySkeletonPoison",  "Skeleton_Poison" },
+            { "TrophySkeletonHildir",  "Skeleton_Hildir" },
+            { "TrophyFrostTroll",      "Troll" }
+        };
+
+        public static void CleanupTrophySummons()
+        {
+            for (int i = trophySummons.Count - 1; i >= 0; i--)
+            {
+                Character c = trophySummons[i];
+                if (c != null && c.GetHealth() > 0f)
+                {
+                    HitData hd = new HitData();
+                    hd.m_damage.m_damage = 99999f;
+                    c.Damage(hd);
+                }
+            }
+            trophySummons.Clear();
+        }
+
+        public static bool TryConsumeTrophy(Player player, ItemDrop.ItemData item, Inventory inventory)
+        {
+            if (player == null || item == null || inventory == null) return false;
+            if (item.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Trophy) return false;
+
+            string trophyPrefab = item.m_dropPrefab != null ? item.m_dropPrefab.name : null;
+            if (string.IsNullOrEmpty(trophyPrefab)) return false;
+
+            string creatureName;
+            if (!TrophyToPrefab.TryGetValue(trophyPrefab, out creatureName))
+            {
+                if (!trophyPrefab.StartsWith("Trophy")) return false;
+                creatureName = trophyPrefab.Substring("Trophy".Length);
+            }
+
+            GameObject prefab = ZNetScene.instance.GetPrefab(creatureName);
+            if (prefab == null)
+            {
+                player.Message(MessageHud.MessageType.TopLeft, "Cannot summon from " + item.m_shared.m_name);
+                return false;
+            }
+
+            // Clear previous summons before spawning new ones
+            CleanupTrophySummons();
+            trophySummonOwner = player;
+
+            float sLevel = player.GetSkills().GetSkillList()
+                .FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.ConjurationSkillDef).m_level;
+
+            UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("vfx_WishbonePing"),
+                player.transform.position, Quaternion.identity);
+
+            for (int i = 0; i < 5; i++)
+            {
+                float angle = (360f / 5f) * i;
+                Vector3 offset = Quaternion.Euler(0f, angle, 0f) * (player.transform.forward * 3f);
+                Vector3 pos = player.transform.position + offset;
+
+                GameObject go = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
+                Character ch = go.GetComponent<Character>();
+                if (ch == null) continue;
+
+                SE_Companion seComp = (SE_Companion)ScriptableObject.CreateInstance(typeof(SE_Companion));
+                seComp.m_ttl = 0f; // permanent until death
+                seComp.damageModifier = .5f + (.015f * sLevel) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_druidDefenders;
+                seComp.summoner = player;
+                ch.GetSEMan().AddStatusEffect(seComp);
+
+                ch.m_faction = Character.Faction.Players;
+                ch.SetTamed(true);
+                ch.m_name = "Druid's " + ch.m_name;
+
+                MonsterAI ai = ch.GetBaseAI() as MonsterAI;
+                if (ai != null)
+                {
+                    ai.SetFollowTarget(player.gameObject);
+                }
+
+                CharacterDrop drop = ch.GetComponent<CharacterDrop>();
+                if (drop != null) drop.m_drops.Clear();
+
+                trophySummons.Add(ch);
+                UnityEngine.Object.Instantiate(ZNetScene.instance.GetPrefab("vfx_Potion_stamina_medium"),
+                    ch.transform.position, Quaternion.identity);
+            }
+
+            inventory.RemoveOneItem(item);
+            player.Message(MessageHud.MessageType.TopLeft, "Consumed " + item.m_shared.m_name + " - 5 minions summoned");
+            player.RaiseSkill(ValheimLegends.ConjurationSkill, VL_Utility.GetDefenderSkillGain);
+            return true;
+        }
+
         private static void ToggleForm(Player player, DruidForm desired)
         {
             bool hadSE = player.GetSEMan().HaveStatusEffect("SE_VL_DruidShapeshift".GetStableHashCode());
@@ -151,6 +265,50 @@ namespace ValheimLegends
             }
 
             Process_Abilities(player, altitude);
+            UpdateTrophySummonLeash(player);
+        }
+
+        private static float s_leashTimer = 0f;
+        private static void UpdateTrophySummonLeash(Player player)
+        {
+            if (player == null || trophySummons.Count == 0) return;
+
+            float rate = VL_TweakConfig.Druid_TrophyFollowCheckRate != null
+                ? Mathf.Max(0.2f, VL_TweakConfig.Druid_TrophyFollowCheckRate.Value)
+                : 2f;
+
+            s_leashTimer += Time.deltaTime;
+            if (s_leashTimer < rate) return;
+            s_leashTimer = 0f;
+
+            float maxDist = VL_TweakConfig.Druid_TrophyLeashDistance != null
+                ? VL_TweakConfig.Druid_TrophyLeashDistance.Value
+                : 25f;
+            float maxDistSqr = maxDist * maxDist;
+
+            for (int i = trophySummons.Count - 1; i >= 0; i--)
+            {
+                Character c = trophySummons[i];
+                if (c == null || c.IsDead())
+                {
+                    trophySummons.RemoveAt(i);
+                    continue;
+                }
+
+                MonsterAI ai = c.GetBaseAI() as MonsterAI;
+                if (ai != null && ai.GetFollowTarget() != player.gameObject)
+                {
+                    ai.SetFollowTarget(player.gameObject);
+                }
+
+                Vector3 diff = c.transform.position - player.transform.position;
+                if (diff.sqrMagnitude > maxDistSqr)
+                {
+                    Vector3 dir = diff.normalized;
+                    Vector3 newPos = player.transform.position - dir * 3f + player.transform.up * 1f;
+                    c.transform.position = newPos;
+                }
+            }
         }
 
         private static void Process_Abilities(Player player, float altitude)

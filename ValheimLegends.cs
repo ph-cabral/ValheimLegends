@@ -1014,6 +1014,17 @@ namespace ValheimLegends
                 Player player = __instance as Player;
                 if (player != null && vl_player != null && player.GetPlayerName() == vl_player.vl_name && vl_player.vl_class == PlayerClass.Druid)
                 {
+                    if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Trophy)
+                    {
+                        if (inventory == null) inventory = ___m_inventory;
+                        if (!inventory.ContainsItem(item)) return false;
+                        if (Class_Druid.TryConsumeTrophy(player, item, inventory))
+                        {
+                            __instance.m_consumeItemEffects.Create(Player.m_localPlayer.transform.position, Quaternion.identity);
+                            ___m_zanim.SetTrigger("eat");
+                        }
+                        return false;
+                    }
                     if (name.Contains("$item_pinecone") || name.Contains("$item_beechseeds") || name.Contains("$item_fircone") || name.Contains("$item_ancientseed") || name.Contains("$item_birchseeds"))
                     {
                         if (inventory == null)
@@ -1709,7 +1720,16 @@ namespace ValheimLegends
             {                
                 if (!__instance.IsDead() && __instance.GetHealth() <= 0f && vl_player != null)
                 {
+                    // Prune dead trophy summons
+                    if (Class_Druid.trophySummons.Count > 0)
+                    {
+                        Class_Druid.trophySummons.RemoveAll(c => c == null || c == __instance || c.IsDead());
+                    }
                     Player player = __instance as Player;
+                    if (player != null && vl_player.vl_class == PlayerClass.Druid && player.GetPlayerName() == vl_player.vl_name)
+                    {
+                        Class_Druid.CleanupTrophySummons();
+                    }
                     if (player != null && vl_player.vl_class == PlayerClass.Priest && player.GetPlayerName() == vl_player.vl_name)
                     {
                         if (!__instance.GetSEMan().HaveStatusEffect("SE_VL_DyingLight_CD".GetStableHashCode()))
