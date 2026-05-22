@@ -227,6 +227,7 @@ namespace ValheimLegends
 
                 SyncedEntries["TrophySummon_LeashDistance"] = Druid_TrophyLeashDistance;
                 SyncedEntries["TrophySummon_FollowCheckRate"] = Druid_TrophyFollowCheckRate;
+                // (claves nuevas con prefijo vl_svr_ se registran más abajo)
 
                 // Heal (ability3) = curación INSTANTÁNEA de un golpe (sin canalizar, sin HoT)
                 Priest_HealOverTime = cfg.Bind(SEC_PRI, "Heal_OverTime", false,
@@ -341,6 +342,119 @@ namespace ValheimLegends
                 Pan_R_Cooldown = cfg.Bind(SEC_PAN, "R_Cooldown", 18f, "Cooldown del salto (seg).");
                 Pan_Item = cfg.Bind(SEC_PAN, "Pantheon_Item", "item_surtlingcore",
                     "Sacrificá este item en el altar de Eikthyr para volverte Pantheon. Vacío = deshabilitar clase.");
+
+                // ---- Registrar TODAS las entries como sincronizadas (server-authoritative) ----
+                // Cooldowns por habilidad
+                foreach (var kv in _cd)
+                    SyncedEntries["vl_svr_" + kv.Key + "_Cooldown"] = kv.Value;
+
+                // Druid
+                SyncedEntries["vl_svr_Druid_DragonDrain"]            = Druid_DragonDrain;
+                SyncedEntries["vl_svr_Druid_DragonResist"]           = Druid_DragonResist;
+                SyncedEntries["vl_svr_Druid_DragonDamage"]           = Druid_DragonDamage;
+                SyncedEntries["vl_svr_Druid_DragonScale"]            = Druid_DragonScale;
+                SyncedEntries["vl_svr_Druid_AboDrain"]               = Druid_AboDrain;
+                SyncedEntries["vl_svr_Druid_AboResist"]              = Druid_AboResist;
+                SyncedEntries["vl_svr_Druid_AboDamage"]              = Druid_AboDamage;
+                SyncedEntries["vl_svr_Druid_AboScale"]               = Druid_AboScale;
+                SyncedEntries["vl_svr_Druid_SerpentDrain"]           = Druid_SerpentDrain;
+                SyncedEntries["vl_svr_Druid_SerpentResist"]          = Druid_SerpentResist;
+                SyncedEntries["vl_svr_Druid_SerpentSpeed"]           = Druid_SerpentSpeed;
+                SyncedEntries["vl_svr_Druid_SerpentScale"]           = Druid_SerpentScale;
+                SyncedEntries["vl_svr_Druid_RegenDuration"]          = Druid_RegenDuration;
+                SyncedEntries["vl_svr_Druid_RegenInterval"]          = Druid_RegenInterval;
+                SyncedEntries["vl_svr_Druid_RegenCleansePoison"]     = Druid_RegenCleansePoison;
+                // (TrophyLeashDistance y TrophyFollowCheckRate ya estaban registradas con sus claves originales)
+                SyncedEntries["vl_svr_Druid_TrophyLeashDistance"]    = Druid_TrophyLeashDistance;
+                SyncedEntries["vl_svr_Druid_TrophyFollowCheckRate"]  = Druid_TrophyFollowCheckRate;
+
+                // Priest
+                SyncedEntries["vl_svr_Priest_HealOverTime"]          = Priest_HealOverTime;
+                SyncedEntries["vl_svr_Priest_HealDuration"]          = Priest_HealDuration;
+                SyncedEntries["vl_svr_Priest_HealInterval"]          = Priest_HealInterval;
+                SyncedEntries["vl_svr_Priest_HealIntFactor"]         = Priest_HealIntFactor;
+                SyncedEntries["vl_svr_Priest_SanctifyHealTotal"]     = Priest_SanctifyHealTotal;
+                SyncedEntries["vl_svr_Priest_SanctifyDuration"]      = Priest_SanctifyDuration;
+                SyncedEntries["vl_svr_Priest_SanctifyInterval"]      = Priest_SanctifyInterval;
+                SyncedEntries["vl_svr_Priest_SanctifyRadius"]        = Priest_SanctifyRadius;
+                SyncedEntries["vl_svr_Priest_SanctifyIntFactor"]     = Priest_SanctifyIntFactor;
+                SyncedEntries["vl_svr_Priest_PurgeFrostDamage"]      = Priest_PurgeFrostDamage;
+                SyncedEntries["vl_svr_Priest_PurgeFrostScale"]       = Priest_PurgeFrostScale;
+                SyncedEntries["vl_svr_Priest_PurgeRadius"]           = Priest_PurgeRadius;
+                SyncedEntries["vl_svr_Priest_PurgeFreeze"]           = Priest_PurgeFreeze;
+                SyncedEntries["vl_svr_Priest_PurgeFreezeDur"]        = Priest_PurgeFreezeDur;
+                SyncedEntries["vl_svr_Priest_PurgeFreezeSlow"]       = Priest_PurgeFreezeSlow;
+                SyncedEntries["vl_svr_Priest_PurgeBaseCooldown"]     = Priest_PurgeBaseCooldown;
+                SyncedEntries["vl_svr_Priest_PurgeCdIntFactor"]      = Priest_PurgeCdIntFactor;
+                SyncedEntries["vl_svr_Priest_PurgeCdMin"]            = Priest_PurgeCdMin;
+                SyncedEntries["vl_svr_Priest_PurgeRadiusIntFactor"]  = Priest_PurgeRadiusIntFactor;
+
+                // Valkyrie
+                SyncedEntries["vl_svr_Valk_TauntEnabled"]            = Valk_TauntEnabled;
+                SyncedEntries["vl_svr_Valk_TauntRadius"]             = Valk_TauntRadius;
+                SyncedEntries["vl_svr_Valk_TauntDuration"]           = Valk_TauntDuration;
+                SyncedEntries["vl_svr_Valk_TauntBulwark"]            = Valk_TauntBulwark;
+                SyncedEntries["vl_svr_Valk_TauntStagger"]            = Valk_TauntStagger;
+                SyncedEntries["vl_svr_Valk_TauntLeap"]               = Valk_TauntLeap;
+
+                // Pantheon
+                SyncedEntries["vl_svr_Pan_MortalWillStacks"]         = Pan_MortalWillStacks;
+                SyncedEntries["vl_svr_Pan_MortalWillMult"]           = Pan_MortalWillMult;
+                SyncedEntries["vl_svr_Pan_Q_Damage"]                 = Pan_Q_Damage;
+                SyncedEntries["vl_svr_Pan_Q_DamageScale"]            = Pan_Q_DamageScale;
+                SyncedEntries["vl_svr_Pan_Q_Cost"]                   = Pan_Q_Cost;
+                SyncedEntries["vl_svr_Pan_Q_Cooldown"]               = Pan_Q_Cooldown;
+                SyncedEntries["vl_svr_Pan_Q_Speed"]                  = Pan_Q_Speed;
+                SyncedEntries["vl_svr_Pan_Q_ChargeForce"]            = Pan_Q_ChargeForce;
+                SyncedEntries["vl_svr_Pan_Q_ChargeUp"]               = Pan_Q_ChargeUp;
+                SyncedEntries["vl_svr_Pan_Q_ChargeRadius"]           = Pan_Q_ChargeRadius;
+                SyncedEntries["vl_svr_Pan_Q_StabRange"]              = Pan_Q_StabRange;
+                SyncedEntries["vl_svr_Pan_Q_StabAngle"]              = Pan_Q_StabAngle;
+                SyncedEntries["vl_svr_Pan_Block_SpearDamage"]        = Pan_Block_SpearDamage;
+                SyncedEntries["vl_svr_Pan_Block_SpearStamina"]       = Pan_Block_SpearStamina;
+                SyncedEntries["vl_svr_Pan_E_Duration"]               = Pan_E_Duration;
+                SyncedEntries["vl_svr_Pan_E_FireDmgPerSec"]          = Pan_E_FireDmgPerSec;
+                SyncedEntries["vl_svr_Pan_E_FireDmgPerStrength"]     = Pan_E_FireDmgPerStrength;
+                SyncedEntries["vl_svr_Pan_E_Range"]                  = Pan_E_Range;
+                SyncedEntries["vl_svr_Pan_E_Angle"]                  = Pan_E_Angle;
+                SyncedEntries["vl_svr_Pan_E_Cost"]                   = Pan_E_Cost;
+                SyncedEntries["vl_svr_Pan_E_Cooldown"]               = Pan_E_Cooldown;
+                SyncedEntries["vl_svr_Pan_R_JumpHeight"]             = Pan_R_JumpHeight;
+                SyncedEntries["vl_svr_Pan_R_HoverTime"]              = Pan_R_HoverTime;
+                SyncedEntries["vl_svr_Pan_R_AoeRadius"]              = Pan_R_AoeRadius;
+                SyncedEntries["vl_svr_Pan_R_ImpactDamage"]           = Pan_R_ImpactDamage;
+                SyncedEntries["vl_svr_Pan_R_DamagePerStrength"]      = Pan_R_DamagePerStrength;
+                SyncedEntries["vl_svr_Pan_R_StunDuration"]           = Pan_R_StunDuration;
+                SyncedEntries["vl_svr_Pan_R_StunPerStrength"]        = Pan_R_StunPerStrength;
+                SyncedEntries["vl_svr_Pan_R_Cost"]                   = Pan_R_Cost;
+                SyncedEntries["vl_svr_Pan_R_Cooldown"]               = Pan_R_Cooldown;
+                SyncedEntries["vl_svr_Pan_Item"]                     = Pan_Item;
+
+                // Hook: si soy CLIENTE conectado a un server, cualquier cambio local
+                // se revierte al último valor sincronizado por el server.
+                foreach (var kvp in SyncedEntries)
+                {
+                    string syncKey = kvp.Key;
+                    ConfigEntryBase entry = kvp.Value;
+                    if (entry == null) continue;
+                    entry.SettingChanged += (s, e) =>
+                    {
+                        try
+                        {
+                            if (ZNet.instance != null && !ZNet.instance.IsServer()
+                                && VL_ConfigSync.ServerValues.TryGetValue(syncKey, out object srvVal)
+                                && srvVal != null)
+                            {
+                                if (!object.Equals(entry.BoxedValue, srvVal))
+                                {
+                                    entry.BoxedValue = srvVal;
+                                    Debug.LogWarning("[VL] Revertido cambio local de " + syncKey + " (server-authoritative).");
+                                }
+                            }
+                        }
+                        catch { }
+                    };
+                }
 
                 Debug.Log("[VL_TweakConfig] Config de tweaks inicializada.");
             }

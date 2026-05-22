@@ -15,6 +15,17 @@ namespace ValheimLegends
     {
         public static string ConfigPath = Path.GetDirectoryName(Paths.BepInExConfigPath) + Path.DirectorySeparatorChar + "ValheimLegends.cfg";
 
+        // Último valor recibido del server por cada key sincronizada (usado para
+        // revertir cambios locales del cliente).
+        public static Dictionary<string, object> ServerValues = new Dictionary<string, object>();
+
+        private static string FormatInvariant(object v)
+        {
+            if (v is float f) return f.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (v is double d) return d.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (v is bool b) return b ? "true" : "false";
+            return Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture);
+        }
 
         public static void RPC_VL_ConfigSync(long sender, ZPackage configPkg)
         {
@@ -24,6 +35,7 @@ namespace ValheimLegends
                 //ZLog.Log("VL SERVER -------------- Sending client #" + sender + " server configs");
                 string[] rawConfigData = File.ReadAllLines(ConfigPath);
                 List<string> cleanConfigData = new List<string>();
+                HashSet<string> seenKeys = new HashSet<string>();
 
                 for (int i = 0; i < rawConfigData.Length; i++)
                 {
@@ -34,7 +46,20 @@ namespace ValheimLegends
 
                     //Add to clean data
                     cleanConfigData.Add(rawConfigData[i]);
+                    // Track key para no duplicar
+                    string t = rawConfigData[i].Trim();
+                    int eq = t.IndexOf('=');
+                    if (eq > 0) seenKeys.Add(t.Substring(0, eq).Trim());
                     //ZLog.Log("VL SERVER -------------- sending config: " + rawConfigData[i]);
+                }
+
+                // Emitir todas las SyncedEntries del fork (VL_TweakConfig) desde memoria,
+                // por si no aparecen en el archivo o si fueron editadas en runtime.
+                foreach (var kvp in VL_TweakConfig.SyncedEntries)
+                {
+                    if (kvp.Value == null) continue;
+                    if (seenKeys.Contains(kvp.Key)) continue; // ya emitido desde archivo
+                    cleanConfigData.Add(kvp.Key + " = " + FormatInvariant(kvp.Value.BoxedValue));
                 }
 
                 cleanConfigData.Add("vl_svr_version = " + ValheimLegends.Version);
@@ -187,6 +212,7 @@ namespace ValheimLegends
                                 if (parsed != null)
                                 {
                                     entry.BoxedValue = parsed;
+                                    ServerValues[key] = parsed;
                                 }
                             }
                             catch (Exception ex)
