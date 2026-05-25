@@ -293,6 +293,15 @@ namespace ValheimLegends
             public static void Postfix(ZNet __instance, ZRoutedRpc ___m_routedRpc)
             {
                 ___m_routedRpc.Register<ZPackage>("VL_ConfigSync", VL_ConfigSync.RPC_VL_ConfigSync);
+                // Si soy server, instalar hooks para re-broadcast cuando cambie cualquier vl_svr_*.
+                try
+                {
+                    if (__instance != null && __instance.IsServer())
+                    {
+                        VL_ConfigSync.InstallServerBroadcastHooks();
+                    }
+                }
+                catch { }
             }
         }
 

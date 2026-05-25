@@ -5,9 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using BepInEx;
+using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using UnityEngine;
 
 namespace ValheimLegends
 {
@@ -32,34 +34,61 @@ namespace ValheimLegends
             if (ZNet.instance.IsServer()) //Server
             {
                 ZPackage pkg = new ZPackage();
-                //ZLog.Log("VL SERVER -------------- Sending client #" + sender + " server configs");
-                string[] rawConfigData = File.ReadAllLines(ConfigPath);
                 List<string> cleanConfigData = new List<string>();
                 HashSet<string> seenKeys = new HashSet<string>();
 
-                for (int i = 0; i < rawConfigData.Length; i++)
+                // 1) AUTHORITATIVE: enviar TODAS las ConfigEntries vl_svr_* del plugin desde memoria.
+                //    Esto garantiza que el valor en runtime del server (sea por edición del .cfg
+                //    en disco -BepInEx recarga- o por defaults) es el que llega al cliente,
+                //    incluso si el archivo no contiene la línea o tiene comentarios raros.
+                try
                 {
-                    //if (rawConfigData[i].Trim().StartsWith(";") ||
-                    //    rawConfigData[i].Trim().StartsWith("#")) continue; //Skip comments
-                    //if (rawConfigData[i].Trim().IsNullOrWhiteSpace()) continue; //Skip blank lines
-                    if (!rawConfigData[i].Trim().StartsWith("vl_svr_")) continue; //Skip local lines
-
-                    //Add to clean data
-                    cleanConfigData.Add(rawConfigData[i]);
-                    // Track key para no duplicar
-                    string t = rawConfigData[i].Trim();
-                    int eq = t.IndexOf('=');
-                    if (eq > 0) seenKeys.Add(t.Substring(0, eq).Trim());
-                    //ZLog.Log("VL SERVER -------------- sending config: " + rawConfigData[i]);
+                    var pluginInfo = BepInEx.Bootstrap.Chainloader.PluginInfos.Values
+                        .FirstOrDefault(p => p != null && p.Instance is ValheimLegends);
+                    if (pluginInfo != null && pluginInfo.Instance != null)
+                    {
+                        var cfg = ((BaseUnityPlugin)pluginInfo.Instance).Config;
+                        foreach (var kv in cfg)
+                        {
+                            string k = kv.Key.Key;
+                            if (string.IsNullOrEmpty(k) || !k.StartsWith("vl_svr_")) continue;
+                            if (seenKeys.Contains(k)) continue;
+                            cleanConfigData.Add(k + " = " + FormatInvariant(kv.Value.BoxedValue));
+                            seenKeys.Add(k);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ZLog.LogWarning("VL server-side enum config failed: " + ex.Message);
                 }
 
-                // Emitir todas las SyncedEntries del fork (VL_TweakConfig) desde memoria,
-                // por si no aparecen en el archivo o si fueron editadas en runtime.
+                // 2) Fallback: cualquier línea vl_svr_* del archivo que NO esté ya enviada
+                //    (por si quedó algún binding fuera del plugin principal).
+                try
+                {
+                    string[] rawConfigData = File.ReadAllLines(ConfigPath);
+                    for (int i = 0; i < rawConfigData.Length; i++)
+                    {
+                        if (!rawConfigData[i].Trim().StartsWith("vl_svr_")) continue;
+                        string t = rawConfigData[i].Trim();
+                        int eq = t.IndexOf('=');
+                        if (eq <= 0) continue;
+                        string k = t.Substring(0, eq).Trim();
+                        if (seenKeys.Contains(k)) continue;
+                        cleanConfigData.Add(rawConfigData[i]);
+                        seenKeys.Add(k);
+                    }
+                }
+                catch { /* archivo opcional */ }
+
+                // 3) Fallback adicional para SyncedEntries del fork (VL_TweakConfig).
                 foreach (var kvp in VL_TweakConfig.SyncedEntries)
                 {
                     if (kvp.Value == null) continue;
-                    if (seenKeys.Contains(kvp.Key)) continue; // ya emitido desde archivo
+                    if (seenKeys.Contains(kvp.Key)) continue;
                     cleanConfigData.Add(kvp.Key + " = " + FormatInvariant(kvp.Value.BoxedValue));
+                    seenKeys.Add(kvp.Key);
                 }
 
                 cleanConfigData.Add("vl_svr_version = " + ValheimLegends.Version);
@@ -232,6 +261,75 @@ namespace ValheimLegends
                         ZLog.Log("Valheim Legends configurations synced to server.");
                     }
                 }
+            }
+        }
+
+        // ===========================================================
+        // Hook: en el SERVER, cuando cualquier ConfigEntry vl_svr_*
+        // cambia (admin editó el .cfg en disco y BepInEx lo recargó,
+        // o lo modificó vía SettingsManager), reenviar configs a TODOS
+        // los peers conectados para que el cambio sea inmediato y
+        // verdaderamente autoritativo.
+        // ===========================================================
+        private static bool _serverHooksInstalled;
+        public static void InstallServerBroadcastHooks()
+        {
+            if (_serverHooksInstalled) return;
+            _serverHooksInstalled = true;
+            try
+            {
+                var pluginInfo = BepInEx.Bootstrap.Chainloader.PluginInfos.Values
+                    .FirstOrDefault(p => p != null && p.Instance is ValheimLegends);
+                if (pluginInfo == null || pluginInfo.Instance == null) return;
+                var cfg = ((BaseUnityPlugin)pluginInfo.Instance).Config;
+                foreach (var kv in cfg)
+                {
+                    string k = kv.Key.Key;
+                    if (string.IsNullOrEmpty(k) || !k.StartsWith("vl_svr_")) continue;
+                    try
+                    {
+                        var entry = kv.Value;
+                        var ev = entry.GetType().GetEvent("SettingChanged",
+                            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                        if (ev == null) continue;
+                        EventHandler<SettingChangedEventArgs> h = (s, e) =>
+                        {
+                            try
+                            {
+                                if (ZNet.instance == null || !ZNet.instance.IsServer()) return;
+                                BroadcastToAllPeers();
+                            }
+                            catch { }
+                        };
+                        ev.AddEventHandler(entry, h);
+                    }
+                    catch { }
+                }
+                ZLog.Log("[VL] Server broadcast hooks installed.");
+            }
+            catch (Exception ex)
+            {
+                ZLog.LogWarning("[VL] InstallServerBroadcastHooks failed: " + ex.Message);
+            }
+        }
+
+        private static void BroadcastToAllPeers()
+        {
+            try
+            {
+                if (ZNet.instance == null || !ZNet.instance.IsServer()) return;
+                var peers = ZNet.instance.GetPeers();
+                if (peers == null) return;
+                foreach (var p in peers)
+                {
+                    if (p == null) continue;
+                    // Reusar la lógica del RPC del server con un sender válido por peer.
+                    RPC_VL_ConfigSync(p.m_uid, new ZPackage());
+                }
+            }
+            catch (Exception ex)
+            {
+                ZLog.LogWarning("[VL] BroadcastToAllPeers failed: " + ex.Message);
             }
         }
     }
