@@ -337,7 +337,7 @@ namespace ValheimLegends
 
                         //Lingering effects
                         SE_Bulwark SE_bulwark = (SE_Bulwark)ScriptableObject.CreateInstance(typeof(SE_Bulwark));
-                        SE_bulwark.m_ttl = SE_Bulwark.m_baseTTL + Mathf.RoundToInt(player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AbjurationSkillDef).m_level * .2f);
+                        SE_bulwark.m_ttl = SE_Bulwark.m_baseTTL + Mathf.RoundToInt(player.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AbjurationSkillDef).m_level * .3f);
                         player.GetSEMan().AddStatusEffect(SE_bulwark);
 
                         //Apply effects

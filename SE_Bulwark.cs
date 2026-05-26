@@ -13,7 +13,7 @@ namespace ValheimLegends
         public static GameObject GO_SEFX;
 
         [Header("SE_VL_Bulwark")]
-        public static float m_baseTTL = 12f;
+        public static float m_baseTTL = 20f;
         public float damageTakenModifier = .75f;
         private float m_timer = 0f;
 

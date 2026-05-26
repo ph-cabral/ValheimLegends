@@ -1513,12 +1513,13 @@ namespace ValheimLegends
                         bool flag = currentBlocker.m_shared.m_timedBlockBonus > 1f && ___m_blockTimer != -1f && ___m_blockTimer < 0.25f;
                         float skillFactor = __instance.GetSkillFactor(Skills.SkillType.Blocking);
                         float num = currentBlocker.GetBlockPower(skillFactor);
+                        num *= 1.5f;
                         if (flag)
                         {
                             num *= currentBlocker.m_shared.m_timedBlockBonus;
                             if (__instance.GetSEMan().HaveStatusEffect("SE_VL_Riposte".GetStableHashCode()))
                             {
-                                num += 10f * sLevel * VL_GlobalConfigs.c_duelistBonusParry;
+                                num += 15f * sLevel * VL_GlobalConfigs.c_duelistBonusParry;
                             }
                             else
                             {
@@ -1527,13 +1528,13 @@ namespace ValheimLegends
                         }
                         // float totalBlockableDamage = hit.GetTotalBlockableDamage();
                         float totalBlockableDamage = hit.GetTotalBlockableDamage();
-                        float skillBlock = __instance.GetSkillFactor(Skills.SkillType.Blocking) * 50f;
+                        float skillBlock = __instance.GetSkillFactor(Skills.SkillType.Blocking) * 80f;
                         float weaponBlock = currentBlocker.GetBlockPower(skillFactor) * 2f;
                         float maxBlock = skillBlock + weaponBlock;
                         num = Mathf.Min(num, maxBlock);
                         float num2 = Mathf.Min(totalBlockableDamage, num);
                         float num3 = Mathf.Clamp01(num2 / num);
-                        float stamina = __instance.m_blockStaminaDrain * num3 * .5f;
+                        float stamina = __instance.m_blockStaminaDrain * num3 * .25f;
                         __instance.UseStamina(stamina);
                         bool playerHasStamina = __instance.HaveStamina();
                         bool playerRiposteValid = playerHasStamina && num >= totalBlockableDamage;
@@ -1612,7 +1613,7 @@ namespace ValheimLegends
             }
         }
 
-        [HarmonyPatch(typeof(ItemDrop.ItemData), "GetBaseBlockPower", new Type[]
+       [HarmonyPatch(typeof(ItemDrop.ItemData), "GetBaseBlockPower", new Type[]
         {
             typeof(int)
         })]
@@ -1620,18 +1621,28 @@ namespace ValheimLegends
         {
             public static void Postfix(ItemDrop.ItemData __instance, ref float __result)
             {
-                // if (Class_Valkyrie.isBlocking)
-                // {
-                //     __result += 20f;
-                // }
+                // Valkyria SIEMPRE bloquea más que un normal
+                if (vl_player.vl_class == PlayerClass.Valkyrie)
+                {
+                    __result += 15f; // bonus pasivo permanente
+                    __result += Player.m_localPlayer.GetSkillFactor(Skills.SkillType.Blocking) * 10f;
+                }
+
+                // Bulwark DUPLICA el bloqueo total
                 if (Class_Valkyrie.isBlocking)
                 {
-                    __result += 20f;
-                    // Bonus por fuerza (Strength) — usa el peso transportado como proxy de fuerza,
-                    // o un skill específico. Opción más limpia: Blocking skill + nivel de clase
-                    float strengthBonus = Player.m_localPlayer.GetSkillFactor(Skills.SkillType.Blocking) * 30f;
-                    __result += strengthBonus;
+                    __result *= 2f;
                 }
+
+                // Druida bloquea más que un normal con escudo
+                if (vl_player.vl_class == PlayerClass.Druid && __instance.m_shared != null 
+                    && __instance.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield)
+                {
+                    __result += 10f;
+                    __result += Player.m_localPlayer.GetSkillFactor(Skills.SkillType.Blocking) * 15f;
+                }
+
+                // Monk con puños (original del mod)
                 if (vl_player.vl_class == PlayerClass.Monk && __instance.m_shared != null && __instance.m_shared.m_name == "Unarmed")
                 {
                     __result += (Player.m_localPlayer.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.DisciplineSkillDef).m_level) * VL_GlobalConfigs.c_monkBonusBlock;
