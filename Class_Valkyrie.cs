@@ -233,10 +233,6 @@ namespace ValheimLegends
                         //Ability Cost
                         player.UseStamina(VL_Utility.GetLeapCost);
 
-                        // Fork: taunt al usar Leap
-                        if (VL_TweakConfig.Valk_TauntLeap != null && VL_TweakConfig.Valk_TauntLeap.Value)
-                            VL_TauntHelper.ApplyTaunt(player);
-
                         //Effects, animations, and sounds
                         ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(Player.m_localPlayer)).SetTrigger("knife_secondary");
                         ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(Player.m_localPlayer)).SetSpeed(.3f);
@@ -278,15 +274,11 @@ namespace ValheimLegends
                     {
                         //Ability Cooldown
                         StatusEffect se_cd = (SE_Ability2_CD)ScriptableObject.CreateInstance(typeof(SE_Ability2_CD));
-                        se_cd.m_ttl = VL_Utility.GetStaggerCooldownTime;
+                        se_cd.m_ttl = VL_Utility.GetStaggerCooldownTime * VL_GlobalConfigs.c_valkyrieStaggerCooldown;
                         player.GetSEMan().AddStatusEffect(se_cd);
 
                         //Ability Cost
                         player.UseStamina(VL_Utility.GetStaggerCost);
-
-                        // Fork: taunt al usar Stagger
-                        if (VL_TweakConfig.Valk_TauntStagger != null && VL_TweakConfig.Valk_TauntStagger.Value)
-                            VL_TauntHelper.ApplyTaunt(player);
 
                         //Effects, animations, and sounds
                         ((ZSyncAnimation)typeof(Player).GetField("m_zanim", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(Player.m_localPlayer)).SetTrigger("battleaxe_attack1");
@@ -334,10 +326,6 @@ namespace ValheimLegends
 
                         //Ability Cost
                         player.UseStamina(VL_Utility.GetBulwarkCost);
-
-                        // Fork: taunt al usar Bulwark
-                        if (VL_TweakConfig.Valk_TauntBulwark != null && VL_TweakConfig.Valk_TauntBulwark.Value)
-                            VL_TauntHelper.ApplyTaunt(player);
 
                         //Effects, animations, and sounds
                         ValheimLegends.shouldUseGuardianPower = false;

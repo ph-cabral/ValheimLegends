@@ -22,10 +22,6 @@ namespace ValheimLegends
         private float m_timer = 0f;
         public bool doOnce = true;
 
-        // Fork: si true, NO recalcula amount/ttl/interval en el primer Update
-        // (el llamador -ej. Priest- ya los seteó manualmente).
-        public bool externalSetup = false;
-
         public SE_Regeneration()
         {
             base.name = "SE_VL_Regeneration";
@@ -43,14 +39,8 @@ namespace ValheimLegends
             if(doOnce)
             {
                 doOnce = false;
-                if (!externalSetup)
-                {
-                    // Fork: duración e intervalo configurables desde el cfg
-                    m_ttl = VL_TweakConfig.RegenDuration;
-                    m_damageInterval = VL_TweakConfig.RegenInterval;
-                    //ZLog.Log("setting up regeneration, average skill is " +);
-                    m_HealAmount = (2f + (.25f * (m_character.GetSkills().GetTotalSkill() / m_character.GetSkills().GetSkillList().Count))) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_druidRegen;
-                }
+                //ZLog.Log("setting up regeneration, average skill is " +);
+                m_HealAmount = (2f + (.25f * (m_character.GetSkills().GetTotalSkill() / m_character.GetSkills().GetSkillList().Count))) * VL_GlobalConfigs.g_DamageModifer * VL_GlobalConfigs.c_druidRegen;
             }
             m_timer -= dt;
             if (m_timer <= 0f)

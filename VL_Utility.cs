@@ -8,6 +8,7 @@ using HarmonyLib;
 using System.IO;
 using UnityEngine.UI;
 using TMPro;
+using System.Reflection;
 
 namespace ValheimLegends
 {
@@ -40,75 +41,46 @@ namespace ValheimLegends
             File.WriteAllText(GetModDataPath(profile), JsonUtility.ToJson((object)data));
         }
 
-        // public static Texture2D LoadTextureFromAssets(string path)
-        // {
-        //     try
-        //     {
-        //         byte[] data = File.ReadAllBytes(Path.Combine(Folder, "VLAssets", path));
-        //         Texture2D texture2D = new Texture2D(1, 1);
-        //         texture2D.LoadImage(data);
-        //         return texture2D;
-        //     }
-        //     catch
-        //     {
-        //         byte[] data = File.ReadAllBytes(Path.Combine(Folder, path));
-        //         Texture2D texture2D = new Texture2D(1, 1);
-        //         texture2D.LoadImage(data);
-        //         return texture2D;
-        //     }
-        // }
-        // ============================================================================
-// REEMPLAZAR el metodo LoadTextureFromAssets en VL_Utility.cs (lineas ~43-59)
-// por esta version. Usa reflexion para llamar a LoadImage en runtime, asi el
-// compilador NO necesita referenciar UnityEngine.ImageConversionModule
-// (que es lo que arrastra el conflicto netstandard 2.0 vs 2.1).
-// En el juego la DLL existe y el metodo se invoca igual via reflexion.
-//
-// IMPORTANTE: despues de reemplazar esto, QUITAR del .csproj la referencia a
-//   UnityEngine.ImageConversionModule
-// y QUITAR la referencia a netstandard que agregaste.
-// Dejar System.Memory / System.Buffers / Unsafe (no molestan).
-// ============================================================================
+        //         public static Texture2D LoadTextureFromAssets(string path)
+        //         {
+        //             try
+        //             {
+        //                 byte[] data = File.ReadAllBytes(Path.Combine(Folder, "VLAssets", path));
+        //                 Texture2D texture2D = new Texture2D(1, 1);
+        //                 // texture2D.LoadImage(data);
+        // texture2D.LoadImage((byte[])data);                return texture2D;
+        //             }
+        //             catch
+        //             {
+        //                 byte[] data = File.ReadAllBytes(Path.Combine(Folder, path));
+        //                 Texture2D texture2D = new Texture2D(1, 1);
+        //                 // texture2D.LoadImage(data);
+        // texture2D.LoadImage((byte[])data);                return texture2D;
+        //             }
+        //         }
+public static Texture2D LoadTextureFromAssets(string path)
+{
+    // Reflexión para evitar resolución de sobrecarga con ReadOnlySpan
+    var loadImageMethod = typeof(ImageConversion).GetMethod(
+        "LoadImage",
+        new[] { typeof(Texture2D), typeof(byte[]) }
+    );
 
-        private static System.Reflection.MethodInfo _loadImageMI;
-
-        private static bool LoadImageReflInto(Texture2D tex, byte[] data)
-        {
-            if (_loadImageMI == null)
-            {
-                // ImageConversion.LoadImage(Texture2D, byte[]) esta en
-                // UnityEngine.ImageConversionModule, cargado por el juego.
-                foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    var t = asm.GetType("UnityEngine.ImageConversion", false);
-                    if (t == null) continue;
-                    _loadImageMI = t.GetMethod("LoadImage",
-                        new System.Type[] { typeof(Texture2D), typeof(byte[]) });
-                    if (_loadImageMI != null) break;
-                }
-            }
-            if (_loadImageMI == null) return false;
-            object r = _loadImageMI.Invoke(null, new object[] { tex, data });
-            return r is bool b ? b : true;
-        }
-
-        public static Texture2D LoadTextureFromAssets(string path)
-        {
-            try
-            {
-                byte[] data = File.ReadAllBytes(Path.Combine(Folder, "VLAssets", path));
-                Texture2D texture2D = new Texture2D(1, 1);
-                LoadImageReflInto(texture2D, data);
-                return texture2D;
-            }
-            catch
-            {
-                byte[] data = File.ReadAllBytes(Path.Combine(Folder, path));
-                Texture2D texture2D = new Texture2D(1, 1);
-                LoadImageReflInto(texture2D, data);
-                return texture2D;
-            }
-        }
+    try
+    {
+        byte[] data = File.ReadAllBytes(Path.Combine(Folder, "VLAssets", path));
+        Texture2D texture2D = new Texture2D(1, 1);
+        loadImageMethod.Invoke(null, new object[] { texture2D, data });
+        return texture2D;
+    }
+    catch
+    {
+        byte[] data = File.ReadAllBytes(Path.Combine(Folder, path));
+        Texture2D texture2D = new Texture2D(1, 1);
+        loadImageMethod.Invoke(null, new object[] { texture2D, data });
+        return texture2D;
+    }
+}
 
         public static bool TakeInput(Player p)
         {
@@ -342,7 +314,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("ZoneCharge", 180f * VL_GlobalConfigs.g_CooldownModifer);
+                return 180f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetZoneChargeCostPerUpdate
@@ -370,7 +342,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Weaken", 30f * VL_GlobalConfigs.g_CooldownModifer);
+                return 30f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetWeakenSkillGain
@@ -391,7 +363,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Charm", 60f * VL_GlobalConfigs.g_CooldownModifer);
+                return 60f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetCharmSkillGain
@@ -417,7 +389,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("MeteorPunch", 1f * VL_GlobalConfigs.g_CooldownModifer);
+                return 1f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetMeteorPunchSkillGain
@@ -438,7 +410,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("PsiBolt", 1f * VL_GlobalConfigs.g_CooldownModifer);
+                return 1f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetPsiBoltSkillGain
@@ -459,7 +431,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("FlyingKick", 6f * VL_GlobalConfigs.g_CooldownModifer);
+                return 6f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetFlyingKickSkillGain
@@ -485,7 +457,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("PoisonBomb", 30f * VL_GlobalConfigs.g_CooldownModifer);
+                return 30f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetPoisonBombSkillGain
@@ -506,7 +478,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Backstab", 20f * VL_GlobalConfigs.g_CooldownModifer);
+                return 20f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetBackstabSkillGain
@@ -527,7 +499,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Fade", 15f * VL_GlobalConfigs.g_CooldownModifer);
+                return 15f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetFadeSkillGain
@@ -553,7 +525,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Sanctify", 45f * VL_GlobalConfigs.g_CooldownModifer);
+                return 45f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetSanctifySkillGain
@@ -581,7 +553,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Heal", 30f * VL_GlobalConfigs.g_CooldownModifer);
+                return 30f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetHealSkillGain
@@ -602,7 +574,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Purge", 15f * VL_GlobalConfigs.g_CooldownModifer);
+                return 15f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetPurgeSkillGain
@@ -628,7 +600,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("QuickShot", 10f * VL_GlobalConfigs.g_CooldownModifer);
+                return 10f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetQuickShotSkillGain
@@ -649,7 +621,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Riposte", 6f * VL_GlobalConfigs.g_CooldownModifer);
+                return 6f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetRiposteSkillGain
@@ -670,7 +642,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("BlinkStrike", 30f * VL_GlobalConfigs.g_CooldownModifer);
+                return 30f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetBlinkStrikeSkillGain
@@ -696,7 +668,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Light", 20f * VL_GlobalConfigs.g_CooldownModifer);
+                return 20f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetLightSkillGain
@@ -724,7 +696,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Warp", 6f * VL_GlobalConfigs.g_CooldownModifer);
+                return 6f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetWarpSkillGain
@@ -745,7 +717,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Replica", 30f * VL_GlobalConfigs.g_CooldownModifer);
+                return 30f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetReplicaSkillGain
@@ -773,7 +745,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("ForceWave", 20f * VL_GlobalConfigs.g_CooldownModifer);
+                return 20f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
 
@@ -792,7 +764,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Fireball", 12f * VL_GlobalConfigs.g_CooldownModifer);
+                return 12f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetFireballSkillGain
@@ -820,7 +792,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Meteor", 180f * VL_GlobalConfigs.g_CooldownModifer);
+                return 180f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetMeteorSkillGain
@@ -841,7 +813,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("FrostNova", 20f * VL_GlobalConfigs.g_CooldownModifer);
+                return 20f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetFrostNovaSkillGain
@@ -867,7 +839,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Bulwark", 60f * VL_GlobalConfigs.g_CooldownModifer);
+                return 60f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetBulwarkSkillGain
@@ -888,7 +860,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Leap", 15f * VL_GlobalConfigs.g_CooldownModifer);
+                return 15f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetLeapSkillGain
@@ -909,7 +881,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Stagger", 20f * VL_GlobalConfigs.g_CooldownModifer);
+                return 20f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetStaggerSkillGain
@@ -937,7 +909,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("HarpoonPull", 10f * VL_GlobalConfigs.g_CooldownModifer);
+                return 10f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetShieldReleaseSkillGain
@@ -970,7 +942,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Regeneration", 60f * VL_GlobalConfigs.g_CooldownModifer);
+                return 60f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetRegenerationSkillGain
@@ -998,7 +970,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Root", 20f * VL_GlobalConfigs.g_CooldownModifer);
+                return 20f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetRootSkillGain
@@ -1019,7 +991,7 @@ namespace ValheimLegends
         {
             get
             {
-                return VL_TweakConfig.CD("Defender", 120f * VL_GlobalConfigs.g_CooldownModifer);
+                return 120f * VL_GlobalConfigs.g_CooldownModifer;
             }
         }
         public static float GetDefenderSkillGain
@@ -1041,7 +1013,7 @@ namespace ValheimLegends
         }
         public static float GetEnrageCooldown(Player p)
         {
-            float time = VL_TweakConfig.CD("Enrage", 60 * VL_GlobalConfigs.g_CooldownModifer);
+            float time = 60 * VL_GlobalConfigs.g_CooldownModifer;
             return time;
         }
         public static float GetEnrageSkillGain(Player p)
@@ -1056,7 +1028,7 @@ namespace ValheimLegends
         }
         public static float GetSpiritBombCooldown(Player p)
         {
-            float time = VL_TweakConfig.CD("SpiritBomb", 30 * VL_GlobalConfigs.g_CooldownModifer);
+            float time = 30 * VL_GlobalConfigs.g_CooldownModifer;
             return time;
         }
         public static float GetSpiritBombSkillGain(Player p)
@@ -1071,7 +1043,7 @@ namespace ValheimLegends
         }
         public static float GetShellCooldown(Player p)
         {
-            float time = VL_TweakConfig.CD("Shell", 120 * VL_GlobalConfigs.g_CooldownModifer);
+            float time = 120 * VL_GlobalConfigs.g_CooldownModifer;
             return time;
         }
         public static float GetShellSkillGain(Player p)
@@ -1091,7 +1063,7 @@ namespace ValheimLegends
         }
         public static float GetDashCooldown(Player p)
         {
-            float time = VL_TweakConfig.CD("Dash", 10 * VL_GlobalConfigs.g_CooldownModifer);
+            float time = 10 * VL_GlobalConfigs.g_CooldownModifer;
             return time;
         }
         public static float GetDashSkillGain (Player p)
@@ -1106,7 +1078,7 @@ namespace ValheimLegends
         }
         public static float GetBerserkCooldown(Player p)
         {
-            float time = VL_TweakConfig.CD("Berserk", 60 * VL_GlobalConfigs.g_CooldownModifer);
+            float time = 60 * VL_GlobalConfigs.g_CooldownModifer;
             return time;
         }
         public static float GetBerserkSkillGain(Player p)
@@ -1121,7 +1093,7 @@ namespace ValheimLegends
         }
         public static float GetExecuteCooldown(Player p)
         {
-            float time = VL_TweakConfig.CD("Execute", 60 * VL_GlobalConfigs.g_CooldownModifer);
+            float time = 60 * VL_GlobalConfigs.g_CooldownModifer;
             return time;
         }
         public static float GetExecuteSkillGain(Player p)
@@ -1141,7 +1113,7 @@ namespace ValheimLegends
         }
         public static float GetPowerShotCooldown(Player p)
         {
-            float time = VL_TweakConfig.CD("PowerShot", 60 * VL_GlobalConfigs.g_CooldownModifer);
+            float time = 60 * VL_GlobalConfigs.g_CooldownModifer;
             return time;
         }
         public static float GetPowerShotSkillGain(Player p)
@@ -1156,7 +1128,7 @@ namespace ValheimLegends
         }
         public static float GetShadowStalkCooldown(Player p)
         {
-            float time = VL_TweakConfig.CD("ShadowStalk", 45 * VL_GlobalConfigs.g_CooldownModifer);
+            float time = 45 * VL_GlobalConfigs.g_CooldownModifer;
             return time;
         }
         public static float GetShadowStalkSkillGain(Player p)
@@ -1171,7 +1143,7 @@ namespace ValheimLegends
         }
         public static float GetSummonWolfCooldown(Player p)
         {
-            float time = VL_TweakConfig.CD("SummonWolf", 600 * VL_GlobalConfigs.g_CooldownModifer);
+            float time = 600 * VL_GlobalConfigs.g_CooldownModifer;
             return time;
         }
         public static float GetSummonWolfSkillGain(Player p)

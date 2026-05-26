@@ -21,15 +21,15 @@ namespace ValheimLegends
         {
             base.name = "SE_VL_Bulwark";
             m_icon = AbilityIcon;
-            m_tooltip = "Inmunidad total al daño mientras dure (requiere escudo equipado).";
+            m_tooltip = $"Reduces damage taken by {Math.Floor((1f-damageTakenModifier)*100f)}% + .05%*Abjuration";
             m_name = "Bulwark";
             m_ttl = m_baseTTL;
         }
 
         public override void OnDamaged(HitData hit, Character attacker)
         {
-            // Fork: la reducción/inmunidad la aplica VL_Damage_Patch
-            // (Valkyrie con escudo: 80%; Bulwark activo: 100%).
+            float modifier = damageTakenModifier - (m_character.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.AbjurationSkillDef).m_level / 200f);
+            hit.m_damage.Modify(modifier * VL_GlobalConfigs.c_valkyrieBulwark);
             base.OnDamaged(hit, attacker);
         }
 

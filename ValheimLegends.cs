@@ -202,8 +202,7 @@ namespace ValheimLegends
             Enchanter = 10,
             Rogue = 11,
             Shaman = 16,
-            Valkyrie = 32,
-            Pantheon = 64
+            Valkyrie = 32
         }
 
         public static int GetPlayerClassNum
@@ -262,10 +261,6 @@ namespace ValheimLegends
                 {
                     return (int)PlayerClass.Valkyrie;
                 }                
-                else if (vl_player.vl_class == PlayerClass.Pantheon)
-                {
-                    return (int)PlayerClass.Pantheon;
-                }
                 else
                 {
                     return (int)PlayerClass.None;
@@ -293,15 +288,6 @@ namespace ValheimLegends
             public static void Postfix(ZNet __instance, ZRoutedRpc ___m_routedRpc)
             {
                 ___m_routedRpc.Register<ZPackage>("VL_ConfigSync", VL_ConfigSync.RPC_VL_ConfigSync);
-                // Si soy server, instalar hooks para re-broadcast cuando cambie cualquier vl_svr_*.
-                try
-                {
-                    if (__instance != null && __instance.IsServer())
-                    {
-                        VL_ConfigSync.InstallServerBroadcastHooks();
-                    }
-                }
-                catch { }
             }
         }
 
@@ -976,7 +962,7 @@ namespace ValheimLegends
             {
                 if (__instance == Player.m_localPlayer)
                 {
-                    if (Class_Valkyrie.inFlight || Class_Pantheon.inFlight)
+                    if (Class_Valkyrie.inFlight)
                     {
                         if (Mathf.Max(0f, ___m_maxAirAltitude - __instance.transform.position.y) > 1f)
                         {
@@ -1005,11 +991,6 @@ namespace ValheimLegends
                     {
                         Class_Monk.Impact_Effect(Player.m_localPlayer, maxAltitude);
                     }
-                    if (vl_player.vl_class == PlayerClass.Pantheon)
-                    {
-                        Class_Pantheon.Impact_Effect(Player.m_localPlayer, maxAltitude);
-                        Class_Pantheon.inFlight = false;
-                    }
                 }
             }
         }
@@ -1023,17 +1004,6 @@ namespace ValheimLegends
                 Player player = __instance as Player;
                 if (player != null && vl_player != null && player.GetPlayerName() == vl_player.vl_name && vl_player.vl_class == PlayerClass.Druid)
                 {
-                    if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Trophy)
-                    {
-                        if (inventory == null) inventory = ___m_inventory;
-                        if (!inventory.ContainsItem(item)) return false;
-                        if (Class_Druid.TryConsumeTrophy(player, item, inventory))
-                        {
-                            __instance.m_consumeItemEffects.Create(Player.m_localPlayer.transform.position, Quaternion.identity);
-                            ___m_zanim.SetTrigger("eat");
-                        }
-                        return false;
-                    }
                     if (name.Contains("$item_pinecone") || name.Contains("$item_beechseeds") || name.Contains("$item_fircone") || name.Contains("$item_ancientseed") || name.Contains("$item_birchseeds"))
                     {
                         if (inventory == null)
@@ -1118,43 +1088,12 @@ namespace ValheimLegends
             public static bool Prefix(Character __instance, ref HitData hit, float ___m_maxAirAltitude)
             {
                 Character attacker = hit.GetAttacker();
-                // Pantheon Mortal Will: cada golpe que conecta el jugador suma 1 carga
-                if (attacker == Player.m_localPlayer && __instance != Player.m_localPlayer
-                    && vl_player != null && vl_player.vl_class == PlayerClass.Pantheon
-                    && hit.GetTotalDamage() > 0f)
-                {
-                    SE_Pantheon.AddMortalWill();
-                }
                 if (__instance == Player.m_localPlayer)
                 {
                     if (Class_Valkyrie.inFlight)// && Mathf.Max(0f, ___m_maxAirAltitude - __instance.transform.position.y) > 4f)
                     {
                         Class_Valkyrie.inFlight = false;                        
                         return false;
-                    }
-                    // Pantheon en salto: anular el daño de caída (no apagamos
-                    // inFlight acá; lo hace Impact_Effect al aterrizar para no
-                    // perder el golpe en área).
-                    if (Class_Pantheon.inFlight || Time.time < Class_Pantheon.fallImmuneUntil)
-                    {
-                        return false;
-                    }
-                    // Pantheon Aegis activo: daño que viene de frente = 0
-                    if (Class_Pantheon.ShouldNullifyFrontDamage(Player.m_localPlayer, hit))
-                    {
-                        return false;
-                    }
-                    // Fork: Valkyrie con escudo equipado -> 80% reducción pasiva
-                    // (100% si Bulwark está activo)
-                    if (vl_player != null && vl_player.vl_class == PlayerClass.Valkyrie
-                        && Class_Valkyrie.PlayerUsingShield)
-                    {
-                        if (__instance.GetSEMan().HaveStatusEffect("SE_VL_Bulwark".GetStableHashCode()))
-                        {
-                            // Bulwark: inmunidad total
-                            return false;
-                        }
-                        hit.m_damage.Modify(0.2f); // recibe solo 20%
                     }
                     //if(__instance.GetSEMan().HaveStatusEffect("SE_VL_Bulwark".GetStableHashCode()))
                     //{
@@ -1467,51 +1406,16 @@ namespace ValheimLegends
             }
         }
 
-        // Fork: la Serpiente de océano no recibe daño de ahogamiento
-        [HarmonyPatch]
-        public class SerpentNoDrown_Patch
-        {
-            public static System.Reflection.MethodBase TargetMethod()
-            {
-                return AccessTools.Method(typeof(Player), "UpdateBreath")
-                    ?? AccessTools.Method(typeof(Player), "UpdateEnvStatusEffects")
-                    ?? AccessTools.Method(typeof(Character), "UpdateBreath");
-            }
-
-            public static bool Prepare()
-            {
-                return TargetMethod() != null;
-            }
-
-            public static void Postfix(Player __instance)
-            {
-                if (__instance == Player.m_localPlayer
-                    && vl_player != null && vl_player.vl_class == PlayerClass.Druid
-                    && Class_Druid.activeForm == DruidForm.Serpent)
-                {
-                    // Mantiene el aire lleno y omite el daño de ahogamiento
-                    Traverse.Create(root: __instance).Field("m_breath").SetValue(999f);
-                }
-            }
-        }
-
         [HarmonyPatch(typeof(Character), "UpdateMotion", null)]
         public class ClassMotionUpdate_Postfix
         {
-            public static void Postfix(Character __instance, ref bool ___m_flying, float ___m_waterLevel)
+            public static bool Prefix(Character __instance, ref bool ___m_flying, float ___m_waterLevel)
             {
-                if (__instance != Player.m_localPlayer) return;
-
                 if (vl_player != null && vl_player.vl_class == PlayerClass.Shaman && Class_Shaman.isWaterWalking)
                 {
                     ___m_flying = true;
                 }
-                // Fork: Dragón vuela; Serpiente se mueve libre bajo el agua
-                if (vl_player != null && vl_player.vl_class == PlayerClass.Druid
-                    && (Class_Druid.activeForm == DruidForm.Dragon || Class_Druid.activeForm == DruidForm.Serpent))
-                {
-                    ___m_flying = true;
-                }
+                return true;
             }
         }
 
@@ -1621,7 +1525,12 @@ namespace ValheimLegends
                                 num += 2f * sLevel * VL_GlobalConfigs.c_duelistBonusParry;
                             }
                         }
+                        // float totalBlockableDamage = hit.GetTotalBlockableDamage();
                         float totalBlockableDamage = hit.GetTotalBlockableDamage();
+                        float skillBlock = __instance.GetSkillFactor(Skills.SkillType.Blocking) * 50f;
+                        float weaponBlock = currentBlocker.GetBlockPower(skillFactor) * 2f;
+                        float maxBlock = skillBlock + weaponBlock;
+                        num = Mathf.Min(num, maxBlock);
                         float num2 = Mathf.Min(totalBlockableDamage, num);
                         float num3 = Mathf.Clamp01(num2 / num);
                         float stamina = __instance.m_blockStaminaDrain * num3 * .5f;
@@ -1710,12 +1619,20 @@ namespace ValheimLegends
         public class BaseBlockPower_Bulwark_Patch
         {
             public static void Postfix(ItemDrop.ItemData __instance, ref float __result)
-            {                
+            {
+                // if (Class_Valkyrie.isBlocking)
+                // {
+                //     __result += 20f;
+                // }
                 if (Class_Valkyrie.isBlocking)
                 {
                     __result += 20f;
+                    // Bonus por fuerza (Strength) — usa el peso transportado como proxy de fuerza,
+                    // o un skill específico. Opción más limpia: Blocking skill + nivel de clase
+                    float strengthBonus = Player.m_localPlayer.GetSkillFactor(Skills.SkillType.Blocking) * 30f;
+                    __result += strengthBonus;
                 }
-                if(vl_player.vl_class == PlayerClass.Monk && __instance.m_shared != null && __instance.m_shared.m_name == "Unarmed")
+                if (vl_player.vl_class == PlayerClass.Monk && __instance.m_shared != null && __instance.m_shared.m_name == "Unarmed")
                 {
                     __result += (Player.m_localPlayer.GetSkills().GetSkillList().FirstOrDefault((Skills.Skill x) => x.m_info == ValheimLegends.DisciplineSkillDef).m_level) * VL_GlobalConfigs.c_monkBonusBlock;
                 }
@@ -1729,16 +1646,7 @@ namespace ValheimLegends
             {                
                 if (!__instance.IsDead() && __instance.GetHealth() <= 0f && vl_player != null)
                 {
-                    // Prune dead trophy summons
-                    if (Class_Druid.trophySummons.Count > 0)
-                    {
-                        Class_Druid.trophySummons.RemoveAll(c => c == null || c == __instance || c.IsDead());
-                    }
                     Player player = __instance as Player;
-                    if (player != null && vl_player.vl_class == PlayerClass.Druid && player.GetPlayerName() == vl_player.vl_name)
-                    {
-                        Class_Druid.CleanupTrophySummons();
-                    }
                     if (player != null && vl_player.vl_class == PlayerClass.Priest && player.GetPlayerName() == vl_player.vl_name)
                     {
                         if (!__instance.GetSEMan().HaveStatusEffect("SE_VL_DyingLight_CD".GetStableHashCode()))
@@ -2044,12 +1952,6 @@ namespace ValheimLegends
                         vl_player.vl_class = PlayerClass.Druid;
                         flag = true;
                     }
-                    else if (VL_TweakConfig.Pan_Item != null && VL_TweakConfig.Pan_Item.Value != "" && item.m_shared.m_name.Contains(VL_TweakConfig.Pan_Item.Value) && vl_player.vl_class != PlayerClass.Pantheon)
-                    {
-                        user.Message(MessageHud.MessageType.Center, "Acquired the powers of Pantheon");
-                        vl_player.vl_class = PlayerClass.Pantheon;
-                        flag = true;
-                    }
                     else if (item.m_shared.m_name.Contains(VL_GlobalConfigs.ItemStrings["vl_svr_berserkerItem"]) && VL_GlobalConfigs.ItemStrings["vl_svr_berserkerItem"] != "" && vl_player.vl_class != PlayerClass.Berserker)
                     {
                         user.Message(MessageHud.MessageType.Center, "Acquired the powers of a Berserker");
@@ -2221,7 +2123,7 @@ namespace ValheimLegends
                                         Class_Mage.Process_Input(localPlayer, ___m_maxAirAltitude);
                                         break;
                                     case PlayerClass.Druid:
-                                        Class_Druid.Process_Input(localPlayer, ref ___m_body, ___m_maxAirAltitude);
+                                        Class_Druid.Process_Input(localPlayer, ___m_maxAirAltitude);
                                         break;
                                     case PlayerClass.Shaman:
                                         Class_Shaman.Process_Input(localPlayer, ref ___m_body, ref ___m_maxAirAltitude, ref ___m_lastGroundTouch, ___m_waterLevel);
@@ -2278,16 +2180,6 @@ namespace ValheimLegends
                                             SE_Rogue se_r = (SE_Rogue)ScriptableObject.CreateInstance(typeof(SE_Rogue));
                                             se_r.m_ttl = SE_Rogue.m_baseTTL;
                                             localPlayer.GetSEMan().AddStatusEffect(se_r, true);
-                                        }
-                                        break;
-                                    case PlayerClass.Pantheon:
-                                        Class_Pantheon.Process_Input(localPlayer);
-
-                                        if ((!localPlayer.GetSEMan().HaveStatusEffect("SE_VL_Pantheon".GetStableHashCode())))
-                                        {
-                                            SE_Pantheon se_p = (SE_Pantheon)ScriptableObject.CreateInstance(typeof(SE_Pantheon));
-                                            se_p.m_ttl = SE_Pantheon.m_baseTTL;
-                                            localPlayer.GetSEMan().AddStatusEffect(se_p, true);
                                         }
                                         break;
                                     default:
@@ -2587,9 +2479,6 @@ namespace ValheimLegends
             vl_svr_valkyrieBonusIceLance = this.Config.Bind<float>("Class Modifiers", "vl_svr_valkyrieBonusIceLance", 100f, "Modifies the damage from Ice Lance");
             vl_svr_valkyrieChargeDuration = this.Config.Bind<float>("Class Modifiers", "vl_svr_valkyrieChargeDuration", 100f, "Modifies how quickly ice charges decrease");
             vl_svr_valkyrieItem = this.Config.Bind<string>("Class Modifiers", "vl_svr_valkyrieItem", "item_flint", "Sacrifice this item at Eikthyr's altar to become a valkyrie");
-
-            // Fork: config propia de tweaks (cooldowns por-hab + Druid/Priest HoT)
-            VL_TweakConfig.Init(this.Config);
 
             VL_GlobalConfigs.ConfigStrings = new Dictionary<string, float>();
             VL_GlobalConfigs.ConfigStrings.Clear();
@@ -3317,13 +3206,6 @@ namespace ValheimLegends
                 Ability2_Name = "Charm";
                 Ability3_Name = "Z. Charge";
                 Player.m_localPlayer.ShowTutorial("VL_Enchanter");
-            }
-            else if (vl_player.vl_class == PlayerClass.Pantheon)
-            {
-                ZLog.Log("Valheim Legend: Pantheon");
-                Ability1_Name = "Spear";
-                Ability2_Name = "Aegis";
-                Ability3_Name = "Leap";
             }
             else
             {
