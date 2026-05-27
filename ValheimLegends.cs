@@ -1513,28 +1513,22 @@ namespace ValheimLegends
                         bool flag = currentBlocker.m_shared.m_timedBlockBonus > 1f && ___m_blockTimer != -1f && ___m_blockTimer < 0.25f;
                         float skillFactor = __instance.GetSkillFactor(Skills.SkillType.Blocking);
                         float num = currentBlocker.GetBlockPower(skillFactor);
-                        num *= 1.5f;
                         if (flag)
                         {
                             num *= currentBlocker.m_shared.m_timedBlockBonus;
                             if (__instance.GetSEMan().HaveStatusEffect("SE_VL_Riposte".GetStableHashCode()))
                             {
-                                num += 15f * sLevel * VL_GlobalConfigs.c_duelistBonusParry;
+                                num += 10f * sLevel * VL_GlobalConfigs.c_duelistBonusParry;
                             }
                             else
                             {
                                 num += 2f * sLevel * VL_GlobalConfigs.c_duelistBonusParry;
                             }
                         }
-                        // float totalBlockableDamage = hit.GetTotalBlockableDamage();
                         float totalBlockableDamage = hit.GetTotalBlockableDamage();
-                        float skillBlock = __instance.GetSkillFactor(Skills.SkillType.Blocking) * 80f;
-                        float weaponBlock = currentBlocker.GetBlockPower(skillFactor) * 2f;
-                        float maxBlock = skillBlock + weaponBlock;
-                        num = Mathf.Min(num, maxBlock);
                         float num2 = Mathf.Min(totalBlockableDamage, num);
                         float num3 = Mathf.Clamp01(num2 / num);
-                        float stamina = __instance.m_blockStaminaDrain * num3 * .25f;
+                        float stamina = __instance.m_blockStaminaDrain * num3 * .5f;
                         __instance.UseStamina(stamina);
                         bool playerHasStamina = __instance.HaveStamina();
                         bool playerRiposteValid = playerHasStamina && num >= totalBlockableDamage;
